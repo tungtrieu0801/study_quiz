@@ -1,14 +1,10 @@
-import '../App.css'
+import { QueryProvider } from "./providers/QueryProvider";
+import RouterProvider from "./providers/RouterProvider";
 
-function App() {
-
-  return (
-      <>
-          <h1 className="text-6xl font-bold underline">
-              Hello world!
-          </h1>
-      </>
-  )
+export default function App() {
+    return (
+        <QueryProvider>
+            <RouterProvider />
+        </QueryProvider>
+    );
 }
-
-export default App

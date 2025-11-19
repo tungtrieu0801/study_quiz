@@ -1,11 +1,6 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './app/App'
 import './index.css'
-import TestListPage from "./features/test-list/pages/TestListPage.jsx";
-import {QueryClientWrapper} from "./app/QueryClientWrapper.jsx";
 
-createRoot(document.getElementById('root')).render(
-  <QueryClientWrapper>
-    <TestListPage />
-  </QueryClientWrapper>,
-)
+ReactDOM.createRoot(document.getElementById('root')).render(<App />)
