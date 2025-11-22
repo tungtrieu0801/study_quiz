@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { Form, Input, Button, Checkbox, message } from "antd";
+import { Form, Input, Button, message } from "antd";
 import instance from "../../../shared/lib/axios.config";
 import { useNavigate } from "react-router-dom";
+import useAuth from "../../../app/hooks/useAuth";
 
 export default function LoginForm() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const onFinish = async (values) => {
         setLoading(true);
@@ -13,7 +15,8 @@ export default function LoginForm() {
             const res = await instance.post("/auth/login", values);
 
             if (res.data.success) {
-                localStorage.setItem("authToken", res.data.data.token);
+                await login(res.data.data);
+
                 message.success("Đăng nhập thành công!");
                 navigate("/");
             } else {
@@ -28,7 +31,7 @@ export default function LoginForm() {
 
     return (
         <Form layout="vertical" onFinish={onFinish} className="space-y-4">
-
+            {/* UI giữ nguyên */}
             <Form.Item
                 label={<span className="font-medium">Tên đăng nhập</span>}
                 name="username"
@@ -44,10 +47,6 @@ export default function LoginForm() {
             >
                 <Input.Password className="h-10" />
             </Form.Item>
-
-            {/*<Form.Item name="remember" valuePropName="checked">*/}
-            {/*    <Checkbox>Nhớ tôi</Checkbox>*/}
-            {/*</Form.Item>*/}
 
             <Button
                 type="primary"
