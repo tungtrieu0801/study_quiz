@@ -18,7 +18,11 @@ export default function LoginForm() {
                 await login(res.data.data);
 
                 message.success("Đăng nhập thành công!");
-                navigate("/");
+                if ("admin" === res.data.data.user.role) {
+                    navigate("/menu");
+                } else {
+                    navigate("/");
+                }
             } else {
                 message.error(res.data.message || "Sai tên đăng nhập hoặc mật khẩu!");
             }

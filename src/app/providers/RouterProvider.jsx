@@ -6,6 +6,8 @@ import TestListPage from "../../features/test-list/pages/TestListPage.jsx";
 import LoginPage from "../../features/auth/pages/LoginPage.jsx";
 import HomePage from "../../features/home/page/HomePage.jsx";
 import TestDetailPage from "../../features/home/page/TestDetailPage.jsx";
+import MenuPage from "../../features/menu-test-question/pages/MenuPage.jsx";
+import {useAuthContext} from "./AuthProvider.jsx";
 
 // Hook giả lập kiểm tra đăng nhập dựa trên token localStorage
 const useAuth = () => {
@@ -15,8 +17,8 @@ const useAuth = () => {
 
 // PrivateRoute redirect nếu chưa login
 const PrivateRoute = ({ element }) => {
-    const { isAuthenticated } = useAuth();
-    if (!isAuthenticated) {
+    const { user } = useAuthContext();
+    if (!user) {
         return <Navigate to="/login" replace />;
     }
     return element;
@@ -41,9 +43,12 @@ const router = createBrowserRouter([
             },
             {
                 path: "/test/:testId",
-                element: <TestDetailPage />,
+                element: <PrivateRoute element={<TestDetailPage />} />,
+            },
+            {
+                path: "menu",
+                element: <PrivateRoute element={<MenuPage />} />,
             }
-
         ],
     },
 ]);

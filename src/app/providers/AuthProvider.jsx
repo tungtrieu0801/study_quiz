@@ -9,8 +9,6 @@ export function AuthProvider({ children }) {
         return saveUser ? JSON.parse(saveUser) : null;
     });
 
-
-
     const login = async (apiResponseData) => {
         localStorage.setItem("authToken", apiResponseData.token);
         localStorage.setItem("user", JSON.stringify(apiResponseData.user));
@@ -21,7 +19,7 @@ export function AuthProvider({ children }) {
 
     const logout = () => {
         localStorage.removeItem("authToken");
-        localStorage.removeItem("authUser");
+        localStorage.removeItem("user");
         setUser(null);
     };
 
