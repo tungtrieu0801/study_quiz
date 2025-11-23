@@ -6,10 +6,11 @@ import TestListPage from "../../features/test-list/pages/TestListPage.jsx";
 import LoginPage from "../../features/auth/pages/LoginPage.jsx";
 import HomePage from "../../features/home/page/HomePage.jsx";
 import TestDetailPage from "../../features/home/page/TestDetailPage.jsx";
-import MenuPage from "../../features/menu-test-question/pages/MenuPage.jsx";
+import MenuPage from "../../features/admin-management/pages/MenuPage.jsx";
 import {useAuthContext} from "./AuthProvider.jsx";
 import StudentListPages from "../../features/student-management/pages/StudentListPages.jsx";
 import TagListPage from "../../features/tags/pages/TagListPage.jsx";
+import QuestionListPage from "../../features/question/pages/QuestionListPage.jsx";
 
 // Hook giả lập kiểm tra đăng nhập dựa trên token localStorage
 const useAuth = () => {
@@ -58,6 +59,10 @@ const router = createBrowserRouter([
             {
                 path: "tags",
                 element: <PrivateRoute element={<TagListPage />} />,
+            },
+            {
+                path: "questions",
+                element: <PrivateRoute element={<QuestionListPage />} />,
             }
         ],
     },

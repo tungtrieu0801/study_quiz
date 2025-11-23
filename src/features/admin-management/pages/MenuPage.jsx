@@ -24,6 +24,8 @@ export default function MenuPage() {
                 break;
             case "tag-list":
                 navigate("/tags");
+            case "question-list":
+                navigate("/questions");
         }
     }
 

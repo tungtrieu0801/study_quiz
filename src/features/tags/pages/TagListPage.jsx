@@ -135,7 +135,7 @@ export default function TagListPage() {
             <Card className="shadow-md rounded-xl p-6">
 
                 {/* Top bar: Search + Create */}
-                <div className="flex justify-between mb-6 items-center">
+                <div className="flex justify-between mb-6 items-center gap-2">
                     <Input
                         placeholder="Tìm theo tên tag..."
                         className="w-1/3"
