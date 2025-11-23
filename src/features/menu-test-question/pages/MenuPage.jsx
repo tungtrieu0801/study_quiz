@@ -19,6 +19,11 @@ export default function MenuPage() {
             case "tests":
                 navigate("/tests");
                 break;
+            case "student-list":
+                navigate("/students");
+                break;
+            case "tag-list":
+                navigate("/tags");
         }
     }
 

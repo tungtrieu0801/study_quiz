@@ -8,6 +8,8 @@ import HomePage from "../../features/home/page/HomePage.jsx";
 import TestDetailPage from "../../features/home/page/TestDetailPage.jsx";
 import MenuPage from "../../features/menu-test-question/pages/MenuPage.jsx";
 import {useAuthContext} from "./AuthProvider.jsx";
+import StudentListPages from "../../features/student-management/pages/StudentListPages.jsx";
+import TagListPage from "../../features/tags/pages/TagListPage.jsx";
 
 // Hook giả lập kiểm tra đăng nhập dựa trên token localStorage
 const useAuth = () => {
@@ -48,6 +50,14 @@ const router = createBrowserRouter([
             {
                 path: "menu",
                 element: <PrivateRoute element={<MenuPage />} />,
+            },
+            {
+                path: "/students",
+                element: <PrivateRoute element={<StudentListPages />} />,
+            },
+            {
+                path: "tags",
+                element: <PrivateRoute element={<TagListPage />} />,
             }
         ],
     },
