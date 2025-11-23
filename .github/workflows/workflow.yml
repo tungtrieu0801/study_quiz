@@ -29,7 +29,9 @@ jobs:
       # 4. Tạo archive để upload
       - name: Prepare artifact
         run: |
-          tar -czf dist.tar.gz dist
+          cd dist
+          tar -czf ../dist.tar.gz .
+          cd ..
 
       # 5. Upload build lên VPS
       - name: Upload FE to VPS
