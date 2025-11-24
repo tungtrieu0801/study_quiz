@@ -1,28 +1,38 @@
-// src/app/router/RouterProvider.jsx
 import React from "react";
 import { RouterProvider as RRProvider, createBrowserRouter, Navigate } from "react-router-dom";
+import { useAuthContext } from "./AuthProvider.jsx";
+
 import MainLayout from "../layout/MainLayout";
-import TestListPage from "../../features/test-list/pages/TestListPage.jsx";
 import LoginPage from "../../features/auth/pages/LoginPage.jsx";
 import HomePage from "../../features/home/page/HomePage.jsx";
+import TestListPage from "../../features/test-list/pages/TestListPage.jsx";
 import TestDetailPage from "../../features/home/page/TestDetailPage.jsx";
 import MenuPage from "../../features/admin-management/pages/MenuPage.jsx";
-import { useAuthContext } from "./AuthProvider.jsx"; // Sửa lại đường dẫn import đúng với file AuthProvider của bạn
 import StudentListPages from "../../features/student-management/pages/StudentListPages.jsx";
 import TagListPage from "../../features/tags/pages/TagListPage.jsx";
 import QuestionListPage from "../../features/question/pages/QuestionListPage.jsx";
 import TestManagementPage from "../../features/test-list/pages/TestManagementPage.jsx";
 
-// --- IMPORT PAGE MỚI ---
-// Lưu ý: Hãy đảm bảo đường dẫn này đúng với nơi bạn đã lưu file TestManagementPage.jsx
-
-// PrivateRoute redirect nếu chưa login
+// PrivateRoute
 const PrivateRoute = ({ element }) => {
     const { user } = useAuthContext();
     if (!user) {
         return <Navigate to="/login" replace />;
     }
     return element;
+};
+
+// Role redirect
+const RoleRedirect = () => {
+    const { user } = useAuthContext();
+
+    if (!user) return <Navigate to="/login" replace />;
+
+    if (user.role === "admin") {
+        return <Navigate to="/menu" replace />;
+    }
+
+    return <Navigate to="/home" replace />;
 };
 
 const router = createBrowserRouter([
@@ -36,6 +46,10 @@ const router = createBrowserRouter([
         children: [
             {
                 index: true,
+                element: <PrivateRoute element={<RoleRedirect />} />,
+            },
+            {
+                path: "home",
                 element: <PrivateRoute element={<HomePage />} />,
             },
             {
@@ -43,13 +57,11 @@ const router = createBrowserRouter([
                 element: <PrivateRoute element={<TestListPage />} />,
             },
             {
-                // Route dành cho Học sinh làm bài
-                path: "/test/:testId",
+                path: "test/:testId",
                 element: <PrivateRoute element={<TestDetailPage />} />,
             },
             {
-                // Route dành cho Admin quản lý bài thi (Thêm câu hỏi)
-                path: "/admin/test/:testId",
+                path: "admin/test/:testId",
                 element: <PrivateRoute element={<TestManagementPage />} />,
             },
             {
@@ -57,7 +69,7 @@ const router = createBrowserRouter([
                 element: <PrivateRoute element={<MenuPage />} />,
             },
             {
-                path: "/students",
+                path: "students",
                 element: <PrivateRoute element={<StudentListPages />} />,
             },
             {
@@ -72,6 +84,7 @@ const router = createBrowserRouter([
     },
 ]);
 
+// ⬇️ Đây là phần bạn bị thiếu — gây lỗi
 export default function RouterProvider() {
     return <RRProvider router={router} />;
 }
