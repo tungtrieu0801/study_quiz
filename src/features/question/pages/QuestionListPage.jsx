@@ -5,19 +5,24 @@ import instance from "../../../shared/lib/axios.config";
 
 export default function QuestionListPage() {
     const [questions, setQuestions] = useState([]);
+    // Khởi tạo là mảng rỗng để tránh lỗi map
     const [tags, setTags] = useState([]);
     const [tests, setTests] = useState([]);
+
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [form] = Form.useForm();
     const [editingQuestion, setEditingQuestion] = useState(null);
 
-    // Fetch questions
+    // --- FETCH DATA ---
+
     const fetchQuestions = async () => {
         setLoading(true);
         try {
             const res = await instance.get("/questions");
-            setQuestions(res.data.data);
+            // Kiểm tra kỹ dữ liệu trả về
+            const data = res.data.data;
+            setQuestions(Array.isArray(data) ? data : []);
         } catch (err) {
             console.log(err);
             message.error("Không thể tải danh sách câu hỏi");
@@ -25,24 +30,34 @@ export default function QuestionListPage() {
         setLoading(false);
     };
 
-    // Fetch tags
     const fetchTags = async () => {
         try {
             const res = await instance.get("/tag");
-            setTags(res.data.data.tagList);
+            // FIX LỖI TẠI ĐÂY: API trả về mảng trực tiếp trong res.data.data
+            const data = res.data.data;
+            if (Array.isArray(data)) {
+                setTags(data);
+            } else if (data && data.tagList) {
+                setTags(data.tagList);
+            } else {
+                setTags([]);
+            }
         } catch (err) {
             console.log(err);
-            message.error("Không thể tải danh sách tag");
+            // Không setTags(undefined) khi lỗi
+            setTags([]);
         }
     };
 
-    // Fetch tests để hiển thị tên test
     const fetchTests = async () => {
         try {
             const res = await instance.get("/testList");
-            setTests(res.data.data);
+            const data = res.data.data;
+            // Validate dữ liệu test
+            setTests(Array.isArray(data) ? data : []);
         } catch (err) {
             console.log(err);
+            setTests([]);
         }
     };
 
@@ -51,6 +66,8 @@ export default function QuestionListPage() {
         fetchTags();
         fetchTests();
     }, []);
+
+    // --- HANDLERS ---
 
     const openCreateModal = () => {
         setEditingQuestion(null);
@@ -63,6 +80,8 @@ export default function QuestionListPage() {
         form.setFieldsValue({
             ...question,
             tags: question.tags || [],
+            testIds: question.testIds || [],
+            options: question.options || ["", "", "", ""]
         });
         setModalOpen(true);
     };
@@ -75,14 +94,16 @@ export default function QuestionListPage() {
                 await instance.post("/questions", values);
                 message.success("Tạo câu hỏi thành công!");
             } else {
-                message.warning("Cập nhật chưa được triển khai");
+                // Nếu có API update
+                message.warning("Cập nhật chưa được triển khai API");
+                // await instance.put(`/questions/${editingQuestion._id}`, values);
             }
 
             setModalOpen(false);
             fetchQuestions();
         } catch (err) {
             console.log(err);
-            message.error("Không thể lưu câu hỏi");
+            message.error("Có lỗi xảy ra");
         }
     };
 
@@ -97,28 +118,32 @@ export default function QuestionListPage() {
         }
     };
 
+    // --- COLUMNS ---
     const columns = [
         {
             title: "Câu hỏi",
             dataIndex: "content",
             key: "content",
+            width: 300,
         },
         {
             title: "Tags",
             dataIndex: "tags",
             key: "tags",
+            // SAFE GUARD: (tagIds || []) và kiểm tra tags tồn tại
             render: (tagIds) =>
-                tagIds
-                    .map((id) => tags.find((t) => t._id === id)?.name || "")
+                (tagIds || [])
+                    .map((id) => (tags || []).find((t) => t._id === id)?.name || "Unknown")
                     .join(", "),
         },
         {
             title: "Tests",
             dataIndex: "testIds",
             key: "testIds",
+            // SAFE GUARD: (testIds || []) và kiểm tra tests tồn tại
             render: (testIds) =>
-                testIds
-                    .map((id) => tests.find((t) => t._id === id)?.title || "")
+                (testIds || [])
+                    .map((id) => (tests || []).find((t) => t._id === id)?.title || "Unknown")
                     .join(", "),
         },
         {
@@ -126,7 +151,7 @@ export default function QuestionListPage() {
             key: "actions",
             render: (_, record) => (
                 <Space>
-                    <Button onClick={() => openEditModal(record)} type="primary">
+                    <Button onClick={() => openEditModal(record)} type="primary" size="small">
                         Sửa
                     </Button>
                     <Popconfirm
@@ -135,7 +160,7 @@ export default function QuestionListPage() {
                         okText="Xóa"
                         cancelText="Hủy"
                     >
-                        <Button danger>Xóa</Button>
+                        <Button danger size="small">Xóa</Button>
                     </Popconfirm>
                 </Space>
             ),
@@ -143,8 +168,8 @@ export default function QuestionListPage() {
     ];
 
     const expandedRowRender = (record) => (
-        <div>
-            <p><b>Options:</b> {record.options.join(", ")}</p>
+        <div className="bg-slate-50 p-4 rounded">
+            <p><b>Options:</b> {(record.options || []).join(" | ")}</p>
             <p><b>Answer:</b> {record.answer}</p>
             <p><b>Solution:</b> {record.solution}</p>
             <p><b>Grade Level:</b> {record.gradeLevel}</p>
@@ -167,7 +192,8 @@ export default function QuestionListPage() {
                     dataSource={questions}
                     loading={loading}
                     expandable={{ expandedRowRender }}
-                    pagination={false}
+                    pagination={{ pageSize: 5 }}
+                    scroll={{ x: 800 }}
                 />
             </Card>
 
@@ -179,6 +205,7 @@ export default function QuestionListPage() {
                 cancelText="Hủy"
                 onOk={handleSubmit}
                 width={800}
+                centered
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
@@ -186,55 +213,66 @@ export default function QuestionListPage() {
                         name="content"
                         rules={[{ required: true, message: "Câu hỏi không được để trống" }]}
                     >
-                        <Input.TextArea rows={2} placeholder="Nhập câu hỏi..." />
+                        <Input.TextArea rows={2} placeholder="Nhập nội dung câu hỏi..." />
                     </Form.Item>
 
-                    {/* Options nhập A, B, C, D */}
-                    <Form.Item label="Options" style={{ marginBottom: 0 }}>
-                        <Form.Item name={["options", 0]} rules={[{ required: true }]} noStyle>
-                            <Input placeholder="A" style={{ marginBottom: 4 }} />
-                        </Form.Item>
-                        <Form.Item name={["options", 1]} rules={[{ required: true }]} noStyle>
-                            <Input placeholder="B" style={{ marginBottom: 4 }} />
-                        </Form.Item>
-                        <Form.Item name={["options", 2]} rules={[{ required: true }]} noStyle>
-                            <Input placeholder="C" style={{ marginBottom: 4 }} />
-                        </Form.Item>
-                        <Form.Item name={["options", 3]} rules={[{ required: true }]} noStyle>
-                            <Input placeholder="D" />
-                        </Form.Item>
+                    {/* Options */}
+                    <Form.Item label="Các lựa chọn (A, B, C, D)" style={{ marginBottom: 0 }}>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Form.Item name={["options", 0]} rules={[{ required: true, message: "Nhập đáp án A" }]}>
+                                <Input placeholder="Lựa chọn A" prefix={<span className="font-bold mr-2">A.</span>} />
+                            </Form.Item>
+                            <Form.Item name={["options", 1]} rules={[{ required: true, message: "Nhập đáp án B" }]}>
+                                <Input placeholder="Lựa chọn B" prefix={<span className="font-bold mr-2">B.</span>} />
+                            </Form.Item>
+                            <Form.Item name={["options", 2]} rules={[{ required: true, message: "Nhập đáp án C" }]}>
+                                <Input placeholder="Lựa chọn C" prefix={<span className="font-bold mr-2">C.</span>} />
+                            </Form.Item>
+                            <Form.Item name={["options", 3]} rules={[{ required: true, message: "Nhập đáp án D" }]}>
+                                <Input placeholder="Lựa chọn D" prefix={<span className="font-bold mr-2">D.</span>} />
+                            </Form.Item>
+                        </div>
                     </Form.Item>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <Form.Item
+                            label="Đáp án đúng"
+                            name="answer"
+                            rules={[{ required: true, message: "Nhập đáp án đúng" }]}
+                            tooltip="Nhập chính xác nội dung của đáp án đúng (VD: Nội dung của câu A)"
+                        >
+                            <Input placeholder="VD: 4 (hoặc nội dung text)" />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Khối lớp"
+                            name="gradeLevel"
+                            rules={[{ required: true }]}
+                        >
+                            <Input placeholder="VD: 10, 11, 12" />
+                        </Form.Item>
+                    </div>
 
                     <Form.Item
-                        label="Answer"
-                        name="answer"
-                        rules={[{ required: true }]}
-                    >
-                        <Input placeholder="VD: B" />
-                    </Form.Item>
-
-                    <Form.Item
-                        label="Solution"
+                        label="Giải thích (Solution)"
                         name="solution"
                         rules={[{ required: true }]}
                     >
-                        <Input.TextArea rows={2} placeholder="Giải thích đáp án..." />
+                        <Input.TextArea rows={2} placeholder="Giải thích chi tiết..." />
                     </Form.Item>
 
-                    <Form.Item
-                        label="Grade Level"
-                        name="gradeLevel"
-                        rules={[{ required: true }]}
-                    >
-                        <Input placeholder="VD: 2" />
+                    {/* FIX LỖI MAP TAGS Ở ĐÂY: Thêm (tags || []) */}
+                    <Form.Item label="Tags (Danh mục)" name="tags">
+                        <Checkbox.Group
+                            options={(tags || []).map((t) => ({ label: t.name, value: t._id }))}
+                        />
                     </Form.Item>
 
-                    <Form.Item label="Tags" name="tags">
-                        <Checkbox.Group options={tags.map((t) => ({ label: t.name, value: t._id }))} />
-                    </Form.Item>
-
-                    <Form.Item label="Test IDs" name="testIds">
-                        <Checkbox.Group options={tests.map((t) => ({ label: t.title, value: t._id }))} />
+                    {/* FIX LỖI MAP TESTS Ở ĐÂY: Thêm (tests || []) */}
+                    <Form.Item label="Thuộc bài thi (Test IDs)" name="testIds">
+                        <Checkbox.Group
+                            options={(tests || []).map((t) => ({ label: t.title, value: t._id }))}
+                        />
                     </Form.Item>
                 </Form>
             </Modal>

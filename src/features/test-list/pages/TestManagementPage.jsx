@@ -1,6 +1,7 @@
 // src/features/pages/TestManagementPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+// Đảm bảo đường dẫn này đúng với cấu trúc dự án của bạn
 import instance from "../../../shared/lib/axios.config";
 import {
     Table,
@@ -10,7 +11,6 @@ import {
     Modal,
     message,
     Popconfirm,
-    Breadcrumb,
     Typography,
     Empty
 } from "antd";
@@ -21,17 +21,19 @@ import {
     SaveOutlined,
     FileTextOutlined,
     BankOutlined,
-    QuestionCircleOutlined, ClockCircleOutlined
+    QuestionCircleOutlined,
+    ClockCircleOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
-import {useAuth} from "../../auth/hooks/useAuth.js";
+// Đảm bảo đường dẫn này đúng với cấu trúc dự án của bạn
+import useAuth from "../../../app/hooks/useAuth.js";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function TestManagementPage() {
     const { testId } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth(); // Lấy user để check lại quyền
+    const { user } = useAuth();
 
     // State
     const [testInfo, setTestInfo] = useState(null);
@@ -45,29 +47,44 @@ export default function TestManagementPage() {
 
     // --- 1. CHECK ROLE & FETCH DATA ---
     useEffect(() => {
-        // Bảo vệ Route: Nếu không phải admin, đá về trang chủ
-        if (user && user.role !== "admin") {
+        // Kiểm tra quyền truy cập
+        if (user && user.role?.toLowerCase() !== "admin") {
             message.warning("Bạn không có quyền truy cập trang này!");
             navigate("/");
             return;
         }
-        fetchTestDetails();
+        fetchData();
     }, [testId, user]);
 
-    // --- API: Lấy chi tiết bài thi + câu hỏi đã có ---
-    const fetchTestDetails = async () => {
+    // --- API: LOAD DATA AN TOÀN ---
+    const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await instance.get(`/testList/${testId}`);
-            if (res.data.success) {
-                setTestInfo(res.data.data);
-                // Giả định backend trả về populated questions trong mảng 'questions'
-                // Nếu backend chỉ trả về array ID, bạn cần gọi thêm API getQuestionsByIds
-                setCurrentQuestions(res.data.data.questions || []);
+            // 1. Lấy danh sách câu hỏi (Quan trọng nhất)
+            // Đảm bảo backend có endpoint: GET /questions?testId=...
+            const questionsRes = await instance.get(`/questions?testId=${testId}`);
+            if (questionsRes.data.success) {
+                setCurrentQuestions(questionsRes.data.data || []);
             }
+
+            // 2. Lấy thông tin chi tiết đề thi
+            // Sử dụng try-catch lồng để không chặn luồng nếu API này lỗi 404
+            try {
+                const testRes = await instance.get(`/testList/${testId}`);
+                if (testRes.data.success) {
+                    setTestInfo(testRes.data.data);
+                }
+            } catch (error) {
+                console.warn("API chi tiết đề thi lỗi hoặc chưa tồn tại:", error.message);
+                // Nếu chưa có info, set giá trị mặc định để UI không bị vỡ
+                if (!testInfo) {
+                    setTestInfo({ title: `Đề thi #${testId.slice(-6)}`, duration: 0, gradeLevel: "N/A" });
+                }
+            }
+
         } catch (err) {
             console.error(err);
-            message.error("Lỗi khi tải thông tin bài thi");
+            message.error("Lỗi khi tải dữ liệu câu hỏi");
         } finally {
             setLoading(false);
         }
@@ -76,12 +93,11 @@ export default function TestManagementPage() {
     // --- API: Lấy toàn bộ câu hỏi từ ngân hàng ---
     const fetchAllQuestions = async () => {
         try {
-            // Sử dụng API get questions mà bạn đã cung cấp ở context QuestionListPage
             const res = await instance.get("/questions");
             if (res.data.success || Array.isArray(res.data.data)) {
                 const bankData = res.data.data || [];
 
-                // Lọc: Chỉ hiển thị những câu CHƯA có trong bài thi này
+                // Lọc bỏ những câu hỏi ĐÃ CÓ trong đề thi hiện tại
                 const existingIds = currentQuestions.map(q => q._id);
                 const availableQuestions = bankData.filter(q => !existingIds.includes(q._id));
 
@@ -92,14 +108,14 @@ export default function TestManagementPage() {
         }
     };
 
-    // --- HANDLER: Mở Modal thêm câu hỏi ---
+    // --- HANDLER: Mở Modal ---
     const handleOpenAddModal = () => {
-        fetchAllQuestions(); // Tải mới nhất từ ngân hàng
-        setSelectedQuestionIds([]); // Reset lựa chọn cũ
+        fetchAllQuestions();
+        setSelectedQuestionIds([]);
         setModalVisible(true);
     };
 
-    // --- HANDLER: Lưu câu hỏi vào bài thi ---
+    // --- HANDLER: Thêm câu hỏi vào đề (Update field testIds của câu hỏi) ---
     const handleAddQuestionsToTest = async () => {
         if (selectedQuestionIds.length === 0) {
             message.warning("Vui lòng chọn ít nhất 1 câu hỏi");
@@ -108,52 +124,66 @@ export default function TestManagementPage() {
         setSaving(true);
 
         try {
-            // Logic: Lấy danh sách ID cũ + ID mới
-            const currentIds = currentQuestions.map(q => q._id);
-            const newQuestionList = [...currentIds, ...selectedQuestionIds];
+            // Duyệt qua từng ID câu hỏi được chọn để update
+            const updatePromises = selectedQuestionIds.map(async (questionId) => {
+                const originalQuestion = allQuestions.find(q => q._id === questionId);
+                if (!originalQuestion) return null;
 
-            // Cập nhật bài thi với danh sách câu hỏi mới
-            await instance.put(`/testList/${testId}`, {
-                ...testInfo, // Giữ nguyên thông tin khác (title, duration...)
-                questions: newQuestionList // Cập nhật mảng ID questions
+                const currentTestIds = originalQuestion.testIds || [];
+                // Thêm testId hiện tại vào mảng testIds (nếu chưa có)
+                const newTestIds = [...new Set([...currentTestIds, testId])];
+
+                // Gọi API update câu hỏi
+                return instance.put(`/questions/${questionId}`, {
+                    testIds: newTestIds
+                });
             });
+
+            await Promise.all(updatePromises);
 
             message.success(`Đã thêm ${selectedQuestionIds.length} câu hỏi vào đề thi!`);
             setModalVisible(false);
-            fetchTestDetails(); // Reload lại bảng câu hỏi hiện tại
+            fetchData(); // Reload lại danh sách câu hỏi
         } catch (err) {
             console.error(err);
-            message.error("Lỗi khi cập nhật đề thi");
+            message.error("Lỗi khi thêm câu hỏi");
         } finally {
             setSaving(false);
         }
     };
 
-    // --- HANDLER: Xóa câu hỏi khỏi bài thi ---
+    // --- HANDLER: Gỡ câu hỏi khỏi đề ---
     const handleRemoveQuestion = async (questionId) => {
         try {
-            const newQuestionList = currentQuestions
-                .filter(q => q._id !== questionId) // Loại bỏ câu cần xóa
-                .map(q => q._id); // Lấy ID
+            const questionToRemove = currentQuestions.find(q => q._id === questionId);
+            if (!questionToRemove) return;
 
-            await instance.put(`/testList/${testId}`, {
-                ...testInfo,
-                questions: newQuestionList
+            const currentTestIds = questionToRemove.testIds || [];
+            // Loại bỏ testId hiện tại khỏi mảng testIds
+            const newTestIds = currentTestIds.filter(id => id !== testId);
+
+            await instance.put(`/questions/${questionId}`, {
+                testIds: newTestIds
             });
 
             message.success("Đã gỡ câu hỏi khỏi đề thi");
-            fetchTestDetails(); // Reload data
+
+            // Cập nhật State trực tiếp để UI phản hồi ngay lập tức
+            setCurrentQuestions(prev => prev.filter(q => q._id !== questionId));
+
         } catch (err) {
-            message.error("Lỗi khi xóa câu hỏi");
+            console.error(err);
+            message.error("Lỗi khi gỡ câu hỏi");
         }
     };
 
-    // --- TABLE CONFIG (Câu hỏi hiện tại) ---
+    // --- Cấu hình bảng ---
     const columns = [
         {
             title: 'STT',
             key: 'index',
             width: 60,
+            align: 'center',
             render: (_, __, index) => <span className="text-slate-500 font-semibold">{index + 1}</span>,
         },
         {
@@ -166,24 +196,26 @@ export default function TestManagementPage() {
             title: 'Đáp án',
             dataIndex: 'solution',
             key: 'solution',
-            width: 150,
-            render: (sol) => <Tag color="green">{sol || "N/A"}</Tag>
+            width: 200,
+            render: (sol) => <Tag color="green">{sol || "Chưa có lời giải"}</Tag>
         },
         {
             title: 'Loại',
             dataIndex: 'gradeLevel',
             key: 'gradeLevel',
-            width: 100,
+            width: 120,
+            align: 'center',
             render: (lv) => <Tag color="blue">{lv ? `Khối ${lv}` : 'Chung'}</Tag>
         },
         {
             title: 'Hành động',
             key: 'action',
             width: 100,
+            align: 'center',
             render: (_, record) => (
                 <Popconfirm
-                    title="Gỡ câu hỏi này khỏi đề?"
-                    description="Câu hỏi vẫn tồn tại trong ngân hàng câu hỏi."
+                    title="Gỡ câu hỏi này?"
+                    description="Câu hỏi sẽ bị xóa khỏi đề thi này nhưng vẫn còn trong ngân hàng."
                     onConfirm={() => handleRemoveQuestion(record._id)}
                     okText="Gỡ bỏ"
                     cancelText="Huỷ"
@@ -195,7 +227,6 @@ export default function TestManagementPage() {
         },
     ];
 
-    // --- MODAL TABLE CONFIG (Chọn câu hỏi) ---
     const modalColumns = [
         { title: 'Nội dung câu hỏi', dataIndex: 'content', key: 'content' },
         {
@@ -204,7 +235,9 @@ export default function TestManagementPage() {
             width: 150,
             render: (tags) => (
                 <div className="flex flex-wrap gap-1">
-                    {tags?.map((t, i) => <Tag key={i} bordered={false}>{t}</Tag>)}
+                    {Array.isArray(tags) && tags.map((t, i) => (
+                        <Tag key={i} bordered={false}>{typeof t === 'object' ? t.name : t}</Tag>
+                    ))}
                 </div>
             )
         },
@@ -213,8 +246,7 @@ export default function TestManagementPage() {
     return (
         <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans">
             <div className="max-w-7xl mx-auto">
-
-                {/* HEADER & BREADCRUMB */}
+                {/* Header & Breadcrumb */}
                 <div className="mb-8">
                     <Button
                         icon={<ArrowLeftOutlined />}
@@ -237,13 +269,15 @@ export default function TestManagementPage() {
                                 </div>
                                 <div>
                                     <h1 className="text-2xl font-bold text-slate-800 m-0">
-                                        {testInfo?.title || <div className="h-6 w-48 bg-slate-200 rounded animate-pulse"/>}
+                                        {testInfo?.title || "Quản lý câu hỏi"}
                                     </h1>
-                                    <div className="text-slate-500 flex items-center gap-3 text-sm mt-1">
-                                        <span><ClockCircleOutlined /> {testInfo?.duration} phút</span>
-                                        <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                        <span>Khối: {testInfo?.gradeLevel}</span>
-                                    </div>
+                                    {testInfo && (
+                                        <div className="text-slate-500 flex items-center gap-3 text-sm mt-1">
+                                            <span><ClockCircleOutlined /> {testInfo.duration ? `${testInfo.duration} phút` : '0 phút'}</span>
+                                            <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                            <span>Khối: {testInfo.gradeLevel || 'N/A'}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         </div>
@@ -260,7 +294,7 @@ export default function TestManagementPage() {
                     </div>
                 </div>
 
-                {/* MAIN CONTENT: DANH SÁCH CÂU HỎI HIỆN TẠI */}
+                {/* Main Content: Danh sách câu hỏi */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -272,9 +306,9 @@ export default function TestManagementPage() {
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
                             <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">
                                 <QuestionCircleOutlined className="text-blue-500"/>
-                                Danh sách câu hỏi
-                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-sm font-normal ml-2">
-                                    Tổng: {currentQuestions.length}
+                                Danh sách câu hỏi trong đề
+                                <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md text-sm font-bold ml-2">
+                                    {currentQuestions.length}
                                 </span>
                             </h3>
                         </div>
@@ -291,7 +325,7 @@ export default function TestManagementPage() {
                     </Card>
                 </motion.div>
 
-                {/* --- MODAL CHỌN CÂU HỎI --- */}
+                {/* Modal Chọn câu hỏi */}
                 <Modal
                     title={
                         <div className="flex items-center gap-2 text-xl font-bold text-slate-700 py-2 border-b border-slate-100 mb-4">
@@ -323,7 +357,7 @@ export default function TestManagementPage() {
                 >
                     <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 text-sm flex items-center gap-2">
                         <QuestionCircleOutlined />
-                        <span>Hệ thống tự động ẩn những câu hỏi đã có trong đề thi này.</span>
+                        <span>Hệ thống tự động ẩn những câu hỏi đã có trong đề thi này để tránh trùng lặp.</span>
                     </div>
 
                     <Table
@@ -342,7 +376,6 @@ export default function TestManagementPage() {
                         bordered
                     />
                 </Modal>
-
             </div>
         </div>
     );
