@@ -21,7 +21,7 @@ export default function LoginForm() {
                 if ("admin" === res.data.data.user.role) {
                     navigate("/menu");
                 } else {
-                    navigate("/");
+                    navigate("/tests");
                 }
             } else {
                 message.error(res.data.message || "Sai tên đăng nhập hoặc mật khẩu!");

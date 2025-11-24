@@ -7,16 +7,14 @@ import LoginPage from "../../features/auth/pages/LoginPage.jsx";
 import HomePage from "../../features/home/page/HomePage.jsx";
 import TestDetailPage from "../../features/home/page/TestDetailPage.jsx";
 import MenuPage from "../../features/admin-management/pages/MenuPage.jsx";
-import {useAuthContext} from "./AuthProvider.jsx";
+import { useAuthContext } from "./AuthProvider.jsx"; // Sửa lại đường dẫn import đúng với file AuthProvider của bạn
 import StudentListPages from "../../features/student-management/pages/StudentListPages.jsx";
 import TagListPage from "../../features/tags/pages/TagListPage.jsx";
 import QuestionListPage from "../../features/question/pages/QuestionListPage.jsx";
+import TestManagementPage from "../../features/test-list/pages/TestManagementPage.jsx";
 
-// Hook giả lập kiểm tra đăng nhập dựa trên token localStorage
-const useAuth = () => {
-    const token = localStorage.getItem("authToken");
-    return { isAuthenticated: !!token };
-};
+// --- IMPORT PAGE MỚI ---
+// Lưu ý: Hãy đảm bảo đường dẫn này đúng với nơi bạn đã lưu file TestManagementPage.jsx
 
 // PrivateRoute redirect nếu chưa login
 const PrivateRoute = ({ element }) => {
@@ -45,8 +43,14 @@ const router = createBrowserRouter([
                 element: <PrivateRoute element={<TestListPage />} />,
             },
             {
+                // Route dành cho Học sinh làm bài
                 path: "/test/:testId",
                 element: <PrivateRoute element={<TestDetailPage />} />,
+            },
+            {
+                // Route dành cho Admin quản lý bài thi (Thêm câu hỏi)
+                path: "/admin/test/:testId",
+                element: <PrivateRoute element={<TestManagementPage />} />,
             },
             {
                 path: "menu",
