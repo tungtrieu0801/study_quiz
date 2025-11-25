@@ -405,7 +405,7 @@ export default function TestListPage() {
                         <Form.Item label="Tên bài kiểm tra" name="title" rules={[{ required: true }]}><Input size="large" className="rounded-xl"/></Form.Item>
                         <div className="grid grid-cols-2 gap-4">
                             <Form.Item label="Thời gian (phút)" name="duration" rules={[{ required: true }]}><InputNumber size="large" className="w-full rounded-xl"/></Form.Item>
-                            <Form.Item label="Khối lớp" name="gradeLevel" rules={[{ required: true }]}><Select size="large" className="rounded-xl">{[10,11,12].map(g=><Select.Option key={g} value={g.toString()}>Khối {g}</Select.Option>)}</Select></Form.Item>
+                            <Form.Item label="Khối lớp" name="gradeLevel" rules={[{ required: true }]}><Select size="large" className="rounded-xl">{[1,2,3,4,5].map(g=><Select.Option key={g} value={g.toString()}>Khối {g}</Select.Option>)}</Select></Form.Item>
                         </div>
                         <Form.Item label="Mô tả" name="description"><Input.TextArea rows={4} className="rounded-xl"/></Form.Item>
                         <div className="flex justify-end gap-3 pt-4"><Button onClick={handleCancelModal}>Hủy</Button><Button type="primary" htmlType="submit" loading={creating}>Tạo</Button></div>
