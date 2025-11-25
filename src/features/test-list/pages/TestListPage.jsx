@@ -15,54 +15,96 @@ import { motion, AnimatePresence } from "framer-motion";
 import useAuth from "../../../app/hooks/useAuth";
 
 // --- COMPONENT: STUDENT DASHBOARD ---
+// ... giữ nguyên các imports ở trên
+
+// --- COMPONENT: STUDENT DASHBOARD ---
 const StudentDashboard = ({ tests, onViewLeaderboard }) => {
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
+    // Thêm state để lưu số lượng cột hiển thị (mặc định là 5)
+    const [chartLimit, setChartLimit] = useState(5);
 
-    // 1. Lọc các bài đã thi & Sắp xếp mới nhất
+    // --- LOGIC MỚI: Tự động phát hiện màn hình mobile/pc ---
+    useEffect(() => {
+        const handleResize = () => {
+            // Nếu màn hình nhỏ hơn 768px (mobile) thì hiển thị 3, ngược lại hiển thị 5
+            setChartLimit(window.innerWidth < 768 ? 3 : 5);
+        };
+
+        // Gọi hàm 1 lần ngay khi load trang
+        handleResize();
+
+        // Lắng nghe sự kiện resize cửa sổ
+        window.addEventListener('resize', handleResize);
+
+        // Dọn dẹp sự kiện khi component bị hủy
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const takenTests = useMemo(() => {
         return tests.filter(t => t.isTaken)
             .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
     }, [tests]);
 
-    // 2. Tính toán chỉ số
     const totalTaken = takenTests.length;
     const avgScore = totalTaken > 0
         ? (takenTests.reduce((acc, cur) => acc + (cur.score || 0), 0) / totalTaken).toFixed(1)
         : 0;
 
-    // 3. Lấy 5 bài gần nhất cho biểu đồ (Đảo ngược lại để bài mới nhất nằm bên phải)
-    const chartData = takenTests.slice(0, 5).reverse();
+    // --- SỬA ĐỔI: Sử dụng chartLimit thay vì số cứng số 5 ---
+    // Lấy 'chartLimit' bài mới nhất, sau đó đảo ngược để hiển thị theo trục thời gian (cũ -> mới)
+    const chartData = takenTests.slice(0, chartLimit).reverse();
 
     if (totalTaken === 0) return null;
 
-    // Columns cho Modal Lịch sử
     const historyColumns = [
         {
-            title: 'Tên bài thi', dataIndex: 'title',
-            render: (t) => <span className="font-medium text-slate-700">{t}</span>
+            title: 'Tên bài thi',
+            dataIndex: 'title',
+            render: (t, record) => (
+                <div className="flex flex-col">
+                    <span className="font-medium text-slate-700 line-clamp-2 md:line-clamp-1">
+                        {t}
+                    </span>
+                    <span className="text-[11px] text-gray-400 md:hidden mt-0.5">
+                        {new Date(record.updatedAt).toLocaleString('vi-VN', {
+                            day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'
+                        })}
+                    </span>
+                </div>
+            )
         },
         {
-            title: 'Điểm số', dataIndex: 'score', align: 'center', sorter: (a, b) => a.score - b.score,
+            title: 'Điểm',
+            dataIndex: 'score',
+            align: 'center',
+            width: 70,
+            sorter: (a, b) => a.score - b.score,
             render: (score) => (
-                <Tag color={score >= 8 ? 'green' : score >= 5 ? 'blue' : 'red'} className="font-bold border-0 px-3">
+                <Tag color={score >= 8 ? 'green' : score >= 5 ? 'blue' : 'red'} className="font-bold border-0 px-1 md:px-3 mx-0">
                     {score}
                 </Tag>
             )
         },
         {
-            title: 'Thời gian nộp', dataIndex: 'updatedAt', align: 'right', width: 200,
+            title: 'Thời gian nộp',
+            dataIndex: 'updatedAt',
+            align: 'right',
+            width: 180,
+            responsive: ['md'],
             render: (d) => <span className="text-gray-500">{new Date(d).toLocaleString('vi-VN')}</span>
         },
         {
-            title: 'Chi tiết', key: 'action', align: 'center', width: 120,
+            title: '',
+            key: 'action',
+            align: 'center',
+            width: 50,
             render: (_, record) => (
                 <Button
                     type="text"
-                    icon={<EyeOutlined className="text-blue-500"/>}
+                    icon={<EyeOutlined className="text-blue-500 text-lg"/>}
                     onClick={() => onViewLeaderboard(record._id, record.title)}
-                >
-                    Xem hạng
-                </Button>
+                    className="flex items-center justify-center"
+                />
             )
         }
     ];
@@ -75,9 +117,8 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
                 className="mb-10 bg-white p-6 rounded-3xl shadow-sm border border-slate-200"
             >
                 <Row gutter={[24, 24]} align="middle">
-                    {/* Cột Thống kê số */}
                     <Col xs={24} md={8}>
-                        <div className="flex flex-col gap-4 border-r border-slate-100 pr-4">
+                        <div className="flex flex-col gap-4 border-r-0 md:border-r border-slate-100 pr-0 md:pr-4">
                             <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">
                                 <BarChartOutlined className="text-blue-500"/> Kết quả học tập
                             </h3>
@@ -99,39 +140,32 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
                                 onClick={() => setHistoryModalOpen(true)}
                                 className="rounded-xl border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-400 w-fit"
                             >
-                                Xem toàn bộ lịch sử ({totalTaken})
+                                Xem lịch sử ({totalTaken})
                             </Button>
                         </div>
                     </Col>
 
-                    {/* Cột Biểu đồ */}
                     <Col xs={24} md={16}>
-                        <div className="text-xs text-slate-400 mb-2 text-center">Biểu đồ điểm 5 bài thi gần nhất</div>
-                        {/* Tăng chiều cao lên h-40 để chứa điểm số thoải mái */}
+                        {/* Cập nhật text hiển thị số lượng bài */}
+                        <div className="text-xs text-slate-400 mb-2 text-center">
+                            Biểu đồ điểm {chartLimit} bài thi gần nhất
+                        </div>
+
                         <div className="h-40 flex items-end justify-around gap-4 pt-4 border-b border-slate-100 pb-2">
                             {chartData.map((t, idx) => {
-                                // Tính chiều cao cột (Max 75% để chừa chỗ cho text điểm số)
                                 const heightPercent = Math.max((t.score / 10) * 75, 10);
                                 const color = t.score >= 8 ? 'bg-green-400' : t.score >= 5 ? 'bg-blue-400' : 'bg-red-400';
                                 const scoreColor = t.score >= 8 ? 'text-green-600' : t.score >= 5 ? 'text-blue-600' : 'text-red-500';
 
                                 return (
                                     <div key={idx} className="flex flex-col items-center justify-end h-full w-full group relative cursor-pointer hover:-translate-y-1 transition-transform duration-300" onClick={() => onViewLeaderboard(t._id, t.title)}>
-
-                                        {/* ĐIỂM SỐ (Hiển thị luôn trên đầu) */}
-                                        <div className={`text-sm font-bold mb-1 ${scoreColor}`}>
-                                            {t.score}
-                                        </div>
-
-                                        {/* Cột điểm */}
+                                        <div className={`text-sm font-bold mb-1 ${scoreColor}`}>{t.score}</div>
                                         <motion.div
                                             initial={{ height: 0 }}
                                             animate={{ height: `${heightPercent}%` }}
                                             transition={{ duration: 0.8, delay: idx * 0.1 }}
                                             className={`w-full max-w-[40px] rounded-t-md ${color} opacity-80 group-hover:opacity-100 transition-all shadow-sm`}
                                         />
-
-                                        {/* Tên bài */}
                                         <div className="text-[10px] text-slate-400 mt-2 truncate w-16 text-center font-medium" title={t.title}>
                                             {t.title}
                                         </div>
@@ -144,21 +178,32 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
                 </Row>
             </motion.div>
 
-            {/* MODAL LỊCH SỬ CHI TIẾT */}
             <Modal
-                title={<div className="text-xl font-bold text-slate-700 flex items-center gap-2"><HistoryOutlined className="text-blue-600"/> Lịch sử làm bài</div>}
+                title={
+                    <div className="text-lg md:text-xl font-bold text-slate-700 flex items-center gap-2">
+                        <HistoryOutlined className="text-blue-600"/> Lịch sử làm bài
+                    </div>
+                }
                 open={historyModalOpen}
                 onCancel={() => setHistoryModalOpen(false)}
                 footer={null}
                 width={800}
-                centered
+                style={{ top: 20, maxWidth: 'calc(100vw - 16px)', margin: '0 auto' }}
+                centered={false}
                 zIndex={1000}
+                styles={{ body: { padding: '12px 0' } }}
             >
                 <Table
                     dataSource={takenTests}
                     columns={historyColumns}
                     rowKey="_id"
-                    pagination={{ pageSize: 6 }}
+                    pagination={{
+                        pageSize: 5,
+                        size: "small",
+                        hideOnSinglePage: true
+                    }}
+                    size="small"
+                    scroll={{ x: 'max-content' }}
                 />
             </Modal>
         </>
