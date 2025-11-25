@@ -1,7 +1,6 @@
 // src/features/pages/TestManagementPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-// Đảm bảo đường dẫn này đúng với cấu trúc dự án của bạn
 import instance from "../../../shared/lib/axios.config";
 import {
     Table,
@@ -25,7 +24,6 @@ import {
     ClockCircleOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
-// Đảm bảo đường dẫn này đúng với cấu trúc dự án của bạn
 import useAuth from "../../../app/hooks/useAuth.js";
 
 const { Title } = Typography;
@@ -37,46 +35,59 @@ export default function TestManagementPage() {
 
     // State
     const [testInfo, setTestInfo] = useState(null);
-    const [currentQuestions, setCurrentQuestions] = useState([]); // Câu hỏi ĐANG CÓ trong đề
-    const [allQuestions, setAllQuestions] = useState([]);       // Câu hỏi TỪ NGÂN HÀNG (để chọn)
-    const [selectedQuestionIds, setSelectedQuestionIds] = useState([]); // ID các câu được chọn trong Modal
+    const [currentQuestions, setCurrentQuestions] = useState([]);
+    const [allQuestions, setAllQuestions] = useState([]);
+    const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
+
+    // --- 1. THÊM STATE LƯU TAGS ---
+    const [allTags, setAllTags] = useState([]);
 
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // --- 1. CHECK ROLE & FETCH DATA ---
+    // --- CHECK ROLE & FETCH DATA ---
     useEffect(() => {
-        // Kiểm tra quyền truy cập
         if (user && user.role?.toLowerCase() !== "admin") {
             message.warning("Bạn không có quyền truy cập trang này!");
             navigate("/");
             return;
         }
         fetchData();
+        // Gọi thêm hàm fetch Tags ngay khi trang load để sẵn sàng hiển thị
+        fetchTagsList();
     }, [testId, user]);
 
-    // --- API: LOAD DATA AN TOÀN ---
+    // --- API: FETCH TAGS LIST (MỚI) ---
+    const fetchTagsList = async () => {
+        try {
+            const res = await instance.get("/tag");
+            // Xử lý dữ liệu trả về tùy theo cấu trúc API của bạn (giống trang TagListPage)
+            const data = res.data.data;
+            if (Array.isArray(data)) {
+                setAllTags(data);
+            } else if (data?.tagList) {
+                setAllTags(data.tagList);
+            }
+        } catch (err) {
+            console.error("Lỗi tải tags:", err);
+        }
+    };
+
     const fetchData = async () => {
         setLoading(true);
         try {
-            // 1. Lấy danh sách câu hỏi (Quan trọng nhất)
-            // Đảm bảo backend có endpoint: GET /questions?testId=...
             const questionsRes = await instance.get(`/questions?testId=${testId}`);
             if (questionsRes.data.success) {
                 setCurrentQuestions(questionsRes.data.data || []);
             }
 
-            // 2. Lấy thông tin chi tiết đề thi
-            // Sử dụng try-catch lồng để không chặn luồng nếu API này lỗi 404
             try {
                 const testRes = await instance.get(`/testList/${testId}`);
                 if (testRes.data.success) {
                     setTestInfo(testRes.data.data);
                 }
             } catch (error) {
-                console.warn("API chi tiết đề thi lỗi hoặc chưa tồn tại:", error.message);
-                // Nếu chưa có info, set giá trị mặc định để UI không bị vỡ
                 if (!testInfo) {
                     setTestInfo({ title: `Đề thi #${testId.slice(-6)}`, duration: 0, gradeLevel: "N/A" });
                 }
@@ -90,17 +101,13 @@ export default function TestManagementPage() {
         }
     };
 
-    // --- API: Lấy toàn bộ câu hỏi từ ngân hàng ---
     const fetchAllQuestions = async () => {
         try {
             const res = await instance.get("/questions");
             if (res.data.success || Array.isArray(res.data.data)) {
                 const bankData = res.data.data || [];
-
-                // Lọc bỏ những câu hỏi ĐÃ CÓ trong đề thi hiện tại
                 const existingIds = currentQuestions.map(q => q._id);
                 const availableQuestions = bankData.filter(q => !existingIds.includes(q._id));
-
                 setAllQuestions(availableQuestions);
             }
         } catch (err) {
@@ -108,42 +115,32 @@ export default function TestManagementPage() {
         }
     };
 
-    // --- HANDLER: Mở Modal ---
     const handleOpenAddModal = () => {
         fetchAllQuestions();
+        // Nếu chưa load tags thì load lại lần nữa cho chắc
+        if (allTags.length === 0) fetchTagsList();
         setSelectedQuestionIds([]);
         setModalVisible(true);
     };
 
-    // --- HANDLER: Thêm câu hỏi vào đề (Update field testIds của câu hỏi) ---
     const handleAddQuestionsToTest = async () => {
         if (selectedQuestionIds.length === 0) {
             message.warning("Vui lòng chọn ít nhất 1 câu hỏi");
             return;
         }
         setSaving(true);
-
         try {
-            // Duyệt qua từng ID câu hỏi được chọn để update
             const updatePromises = selectedQuestionIds.map(async (questionId) => {
                 const originalQuestion = allQuestions.find(q => q._id === questionId);
                 if (!originalQuestion) return null;
-
                 const currentTestIds = originalQuestion.testIds || [];
-                // Thêm testId hiện tại vào mảng testIds (nếu chưa có)
                 const newTestIds = [...new Set([...currentTestIds, testId])];
-
-                // Gọi API update câu hỏi
-                return instance.put(`/questions/${questionId}`, {
-                    testIds: newTestIds
-                });
+                return instance.put(`/questions/${questionId}`, { testIds: newTestIds });
             });
-
             await Promise.all(updatePromises);
-
             message.success(`Đã thêm ${selectedQuestionIds.length} câu hỏi vào đề thi!`);
             setModalVisible(false);
-            fetchData(); // Reload lại danh sách câu hỏi
+            fetchData();
         } catch (err) {
             console.error(err);
             message.error("Lỗi khi thêm câu hỏi");
@@ -152,32 +149,22 @@ export default function TestManagementPage() {
         }
     };
 
-    // --- HANDLER: Gỡ câu hỏi khỏi đề ---
     const handleRemoveQuestion = async (questionId) => {
         try {
             const questionToRemove = currentQuestions.find(q => q._id === questionId);
             if (!questionToRemove) return;
-
             const currentTestIds = questionToRemove.testIds || [];
-            // Loại bỏ testId hiện tại khỏi mảng testIds
             const newTestIds = currentTestIds.filter(id => id !== testId);
-
-            await instance.put(`/questions/${questionId}`, {
-                testIds: newTestIds
-            });
-
+            await instance.put(`/questions/${questionId}`, { testIds: newTestIds });
             message.success("Đã gỡ câu hỏi khỏi đề thi");
-
-            // Cập nhật State trực tiếp để UI phản hồi ngay lập tức
             setCurrentQuestions(prev => prev.filter(q => q._id !== questionId));
-
         } catch (err) {
             console.error(err);
             message.error("Lỗi khi gỡ câu hỏi");
         }
     };
 
-    // --- Cấu hình bảng ---
+    // --- Cấu hình bảng hiển thị (Bảng chính) ---
     const columns = [
         {
             title: 'STT',
@@ -200,12 +187,24 @@ export default function TestManagementPage() {
             render: (sol) => <Tag color="green">{sol || "Chưa có lời giải"}</Tag>
         },
         {
-            title: 'Loại',
-            dataIndex: 'gradeLevel',
-            key: 'gradeLevel',
-            width: 120,
-            align: 'center',
-            render: (lv) => <Tag color="blue">{lv ? `Khối ${lv}` : 'Chung'}</Tag>
+            title: 'Loại (Tags)',
+            dataIndex: 'tags',
+            key: 'tags',
+            width: 150,
+            // SỬA LẠI CẢ Ở BẢNG CHÍNH NỮA
+            render: (tagIds) => (
+                <div className="flex flex-wrap gap-1">
+                    {Array.isArray(tagIds) && tagIds.map((tagId, i) => {
+                        // Tìm tag object tương ứng trong state allTags
+                        const tagInfo = allTags.find(t => t._id === tagId);
+                        return (
+                            <Tag key={i} color="geekblue" bordered={false}>
+                                {tagInfo ? tagInfo.name : "N/A"}
+                            </Tag>
+                        );
+                    })}
+                </div>
+            )
         },
         {
             title: 'Hành động',
@@ -215,7 +214,7 @@ export default function TestManagementPage() {
             render: (_, record) => (
                 <Popconfirm
                     title="Gỡ câu hỏi này?"
-                    description="Câu hỏi sẽ bị xóa khỏi đề thi này nhưng vẫn còn trong ngân hàng."
+                    description="Câu hỏi sẽ bị xóa khỏi đề thi này."
                     onConfirm={() => handleRemoveQuestion(record._id)}
                     okText="Gỡ bỏ"
                     cancelText="Huỷ"
@@ -227,17 +226,26 @@ export default function TestManagementPage() {
         },
     ];
 
+    // --- Cấu hình bảng Modal (Ngân hàng câu hỏi) ---
     const modalColumns = [
         { title: 'Nội dung câu hỏi', dataIndex: 'content', key: 'content' },
         {
-            title: 'Thẻ',
+            title: 'Loại câu hỏi (Tags)',
             dataIndex: 'tags',
-            width: 150,
-            render: (tags) => (
+            width: 200,
+            // --- SỬA LOGIC RENDER TAGS TẠI ĐÂY ---
+            render: (tagIds) => (
                 <div className="flex flex-wrap gap-1">
-                    {Array.isArray(tags) && tags.map((t, i) => (
-                        <Tag key={i} bordered={false}>{typeof t === 'object' ? t.name : t}</Tag>
-                    ))}
+                    {/* Kiểm tra nếu tagIds là mảng ID thì map ra tìm tên */}
+                    {Array.isArray(tagIds) && tagIds.map((tagId, i) => {
+                        // Tìm tag object trong state allTags dựa vào ID
+                        const tagInfo = allTags.find(t => t._id === tagId);
+                        return (
+                            <Tag key={i} bordered={false} color="cyan">
+                                {tagInfo ? tagInfo.name : tagId /* Fallback là hiện ID nếu chưa load xong */}
+                            </Tag>
+                        );
+                    })}
                 </div>
             )
         },
@@ -246,7 +254,6 @@ export default function TestManagementPage() {
     return (
         <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans">
             <div className="max-w-7xl mx-auto">
-                {/* Header & Breadcrumb */}
                 <div className="mb-8">
                     <Button
                         icon={<ArrowLeftOutlined />}
@@ -294,7 +301,6 @@ export default function TestManagementPage() {
                     </div>
                 </div>
 
-                {/* Main Content: Danh sách câu hỏi */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -325,7 +331,6 @@ export default function TestManagementPage() {
                     </Card>
                 </motion.div>
 
-                {/* Modal Chọn câu hỏi */}
                 <Modal
                     title={
                         <div className="flex items-center gap-2 text-xl font-bold text-slate-700 py-2 border-b border-slate-100 mb-4">

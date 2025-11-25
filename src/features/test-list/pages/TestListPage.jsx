@@ -298,10 +298,10 @@ export default function TestListPage() {
                                 rules={[{ required: true, message: 'Chọn khối lớp!' }]}
                             >
                                 <Select size="large" placeholder="Chọn khối" className="rounded-xl">
-                                    {[10, 11, 12].map(g => (
+                                    {[1, 2, 3, 4, 5].map(g => (
                                         <Select.Option key={g} value={g.toString()}>{`Khối ${g}`}</Select.Option>
                                     ))}
-                                    <Select.Option value="Khác">Khác</Select.Option>
+                                    {/*<Select.Option value="Khác">Khác</Select.Option>*/}
                                 </Select>
                             </Form.Item>
                         </div>
