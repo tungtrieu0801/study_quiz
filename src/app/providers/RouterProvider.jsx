@@ -4,7 +4,6 @@ import { useAuthContext } from "./AuthProvider.jsx";
 
 import MainLayout from "../layout/MainLayout";
 import LoginPage from "../../features/auth/pages/LoginPage.jsx";
-import HomePage from "../../features/home/page/HomePage.jsx";
 import TestListPage from "../../features/test-list/pages/TestListPage.jsx";
 import MenuPage from "../../features/admin-management/pages/MenuPage.jsx";
 import StudentListPages from "../../features/student-management/pages/StudentListPages.jsx";
@@ -32,7 +31,7 @@ const RoleRedirect = () => {
         return <Navigate to="/menu" replace />;
     }
 
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/tests" replace />;
 };
 
 const router = createBrowserRouter([
@@ -47,10 +46,6 @@ const router = createBrowserRouter([
             {
                 index: true,
                 element: <PrivateRoute element={<RoleRedirect />} />,
-            },
-            {
-                path: "home",
-                element: <PrivateRoute element={<HomePage />} />,
             },
             {
                 path: "tests",

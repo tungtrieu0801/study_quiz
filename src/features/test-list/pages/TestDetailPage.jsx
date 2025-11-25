@@ -1,17 +1,66 @@
 // src/features/pages/TestDetailPage.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import instance from "../../../shared/lib/axios.config";
-import { message, Button, Tag, Skeleton, Empty, Spin } from "antd";
+import { message, Button, Tag, Skeleton, Empty, Spin, Result } from "antd";
 import {
     ClockCircleOutlined,
     CheckCircleOutlined,
     CloseCircleOutlined,
     SendOutlined,
-    FlagOutlined
+    FlagOutlined,
+    EyeOutlined,
+    ArrowLeftOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import useAuth from "../../../app/hooks/useAuth.js";
+
+// Component con: Màn hình Tổng kết điểm
+const SummaryCard = ({ result, onReview, onBack }) => (
+    <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full text-center border border-slate-200"
+    >
+        <Result
+            status="success"
+            title="Nộp bài thành công!"
+            subTitle="Kết quả bài thi của bạn đã được ghi nhận."
+            extra={[
+                <div key="score" className="mb-6">
+                    <div className="text-slate-500 mb-2">Điểm số cuối cùng</div>
+                    <div className="text-6xl font-bold text-blue-600 mb-2">
+                        {result.score}<span className="text-2xl text-slate-400">/10</span>
+                    </div>
+                    <div className="flex justify-center gap-4 text-sm font-medium">
+                        <Tag color="green" className="px-3 py-1 text-base">Đúng: {result.correctCount}</Tag>
+                        <Tag color="default" className="px-3 py-1 text-base">Tổng: {result.total}</Tag>
+                    </div>
+                </div>,
+                <Button
+                    key="review"
+                    type="primary"
+                    size="large"
+                    icon={<EyeOutlined />}
+                    className="w-full mb-3 bg-blue-600 h-12 rounded-xl"
+                    onClick={onReview} // Chuyển sang xem chi tiết
+                >
+                    Xem chi tiết đáp án
+                </Button>,
+                <Button
+                    key="back"
+                    size="large"
+                    icon={<ArrowLeftOutlined />}
+                    className="w-full h-12 rounded-xl"
+                    onClick={onBack}
+                >
+                    Quay về trang chủ
+                </Button>
+            ]}
+        />
+    </motion.div>
+);
+
 
 export default function TestDetailPage() {
     const { testId } = useParams();
@@ -23,25 +72,25 @@ export default function TestDetailPage() {
     const [loading, setLoading] = useState(true);
 
     // Test State
-    const [selectedAnswers, setSelectedAnswers] = useState({}); // { questionId: "A" }
-    const [submitResult, setSubmitResult] = useState(null); // Kết quả trả về từ BE
-    const [timeLeft, setTimeLeft] = useState(1800); // 30 phút mặc định
+    const [selectedAnswers, setSelectedAnswers] = useState({});
+    const [submitResult, setSubmitResult] = useState(null);
+    const [timeLeft, setTimeLeft] = useState(1800);
 
-    // UI Refs
+    // UI State
+    const [viewMode, setViewMode] = useState('doing'); // 'doing' | 'summary' | 'review'
     const questionRefs = useRef({});
 
-    // 1. Bảo vệ trang (Nếu bạn muốn test UI bằng nick Admin thì comment đoạn này lại)
+    // 1. Bảo vệ trang
     useEffect(() => {
         if (isInitialized && isAdmin) {
             navigate(`/admin/test/${testId}`, { replace: true });
         }
     }, [isAdmin, isInitialized, testId, navigate]);
 
-    // 2. Fetch TOÀN BỘ câu hỏi (size lớn để lấy hết)
+    // 2. Fetch TOÀN BỘ câu hỏi
     useEffect(() => {
         const fetchQuestions = async () => {
             try {
-                // Thêm size=999 để lấy hết câu hỏi
                 const res = await instance.get(`/questions?testId=${testId}&size=999`);
                 if (res.data.success) {
                     setQuestions(res.data.data);
@@ -60,21 +109,21 @@ export default function TestDetailPage() {
         }
     }, [testId, isInitialized]);
 
-    // 3. Countdown Timer
+    // 3. Countdown Timer (Chỉ chạy khi viewMode = 'doing')
     useEffect(() => {
-        if (submitResult) return; // Dừng đếm khi đã nộp
+        if (viewMode !== 'doing') return;
         const interval = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(interval);
-                    handleAutoSubmit(); // Tự động nộp khi hết giờ
+                    handleAutoSubmit();
                     return 0;
                 }
                 return prev - 1;
             });
         }, 1000);
         return () => clearInterval(interval);
-    }, [submitResult]);
+    }, [viewMode]);
 
     const formatTime = (s) => {
         const m = Math.floor(s / 60).toString().padStart(2, '0');
@@ -82,28 +131,22 @@ export default function TestDetailPage() {
         return { m, sec };
     };
 
-    // 4. Scroll tới câu hỏi
     const scrollToQuestion = (id) => {
         const element = questionRefs.current[id];
         if (element) {
-            // Scroll có offset để không bị header che mất trên mobile
             const headerOffset = 180;
             const elementPosition = element.getBoundingClientRect().top;
             const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
-            window.scrollTo({
-                top: offsetPosition,
-                behavior: "smooth"
-            });
+            window.scrollTo({ top: offsetPosition, behavior: "smooth" });
         }
     };
 
     const handleSelect = (qId, value) => {
-        if (submitResult) return; // Không cho chọn lại khi đã nộp
+        if (viewMode !== 'doing') return; // Chặn sửa khi không phải 'doing'
         setSelectedAnswers(prev => ({ ...prev, [qId]: value }));
     };
 
-    // 5. Submit Logic
     const handleSubmit = async () => {
         if (Object.keys(selectedAnswers).length < questions.length) {
             if (!window.confirm("Bạn chưa làm hết câu hỏi. Chắc chắn nộp?")) return;
@@ -118,27 +161,49 @@ export default function TestDetailPage() {
 
     const processSubmit = async () => {
         try {
-            // Gọi API backend mới tạo
             const res = await instance.post("/questions/submit", {
+                testId: testId,
                 answers: selectedAnswers
             });
 
             if (res.data.success) {
-                setSubmitResult(res.data.data); // Lưu kết quả chấm từ server
+                setSubmitResult(res.data.data);
+                // CHUYỂN NGAY SANG MÀN HÌNH TỔNG KẾT
+                setViewMode('summary');
                 message.success(`Đã nộp bài! Điểm số: ${res.data.data.score}/10`);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } catch (err) {
-            message.error("Lỗi khi nộp bài. Vui lòng thử lại!");
+            const errorMessage = err.response?.data?.message || "Lỗi khi nộp bài. Vui lòng thử lại!";
+            message.error(errorMessage);
             console.error(err);
         }
     };
 
-    // Loading State
-    if (!isInitialized) return <div className="h-screen flex items-center justify-center"><Spin size="large" /></div>;
+    // --- RENDER LOGIC ---
 
+    // 1. Loading State
+    if (!isInitialized || loading) return <div className="h-screen flex items-center justify-center"><Spin size="large" /></div>;
+
+    // 2. Summary Screen (Chặn toàn bộ UI khác)
+    if (viewMode === 'summary') {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+                <SummaryCard
+                    result={submitResult}
+                    onReview={() => setViewMode('review')}
+                    onBack={() => navigate('/')}
+                />
+            </div>
+        );
+    }
+
+    // 3. Doing/Review State (Render giao diện chính)
+    const isReviewing = viewMode === 'review';
     const { m, sec } = formatTime(timeLeft);
-    const isUrgent = timeLeft < 300 && !submitResult;
+    const isUrgent = timeLeft < 300 && viewMode === 'doing';
+    const finalQuestions = questions.length === 0 && !loading;
+
 
     // --- COMPONENT CON: THANH CÂU HỎI ---
     const QuestionPalette = ({ isMobile = false }) => (
@@ -149,13 +214,11 @@ export default function TestDetailPage() {
                     ? "bg-blue-600 text-white border-blue-600 shadow-md"
                     : "bg-white text-slate-500 hover:bg-slate-100 border-slate-200";
 
-                // Logic màu sắc sau khi nộp
                 if (submitResult) {
                     const detail = submitResult.details.find(d => d.questionId === q._id);
                     if (detail?.isCorrect) {
                         btnClass = "bg-green-500 text-white border-green-500";
                     } else {
-                        // Nếu sai (hoặc không chọn) thì hiện màu đỏ
                         btnClass = "bg-red-500 text-white border-red-500";
                     }
                 }
@@ -177,15 +240,16 @@ export default function TestDetailPage() {
         </div>
     );
 
+
     return (
         <div className="min-h-screen bg-slate-50 font-sans pb-20">
-            {/* --- STICKY HEADER (Mobile & Desktop) --- */}
+            {/* --- STICKY HEADER --- */}
             <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-md border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-4 py-3">
                     <div className="flex flex-col gap-3">
                         {/* Hàng 1: Tiêu đề + Đồng hồ + Nút Nộp */}
                         <div className="flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-slate-700 hidden md:block">Kiểm tra Online</h2>
+                            <h2 className="text-lg font-bold text-slate-700 hidden md:block">{isReviewing ? "Xem lại bài thi" : "Kiểm tra Online"}</h2>
 
                             {/* Đồng hồ */}
                             <div className={`flex items-center gap-2 text-xl font-mono font-bold ${isUrgent ? 'text-red-600 animate-pulse' : 'text-slate-700'}`}>
@@ -194,20 +258,21 @@ export default function TestDetailPage() {
                             </div>
 
                             {/* Nút Nộp / Điểm */}
-                            {!submitResult ? (
-                                <Button
-                                    type="primary"
-                                    onClick={handleSubmit}
-                                    icon={<SendOutlined />}
-                                    className="bg-blue-600 shadow-lg shadow-blue-200 font-semibold"
-                                >
-                                    Nộp bài
-                                </Button>
-                            ) : (
-                                <Tag color="gold" className="text-lg px-3 py-1 font-bold rounded-lg border-gold-400">
-                                    Điểm: {submitResult.score}
-                                </Tag>
-                            )}
+                            <div className="flex items-center gap-3">
+                                {isReviewing && (
+                                    <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/')} size="large" className="font-semibold">Thoát</Button>
+                                )}
+                                {!isReviewing && (
+                                    <Button
+                                        type="primary"
+                                        onClick={handleSubmit}
+                                        icon={<SendOutlined />}
+                                        className="bg-blue-600 shadow-lg shadow-blue-200 font-semibold"
+                                    >
+                                        Nộp bài
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Hàng 2 (Mobile Only): Thanh cuộn câu hỏi */}
@@ -235,17 +300,12 @@ export default function TestDetailPage() {
 
                 {/* --- DANH SÁCH CÂU HỎI (Main Content) --- */}
                 <div className="flex-1 min-w-0">
-                    {loading ? (
-                        <div className="space-y-6">
-                            {[1, 2, 3].map(i => <Skeleton active key={i} className="p-6 bg-white rounded-2xl" />)}
-                        </div>
-                    ) : questions.length === 0 ? (
+                    {finalQuestions ? (
                         <Empty description="Đề thi chưa có câu hỏi nào" className="mt-10" />
                     ) : (
                         <div className="space-y-6 md:space-y-8">
                             {questions.map((q, idx) => {
                                 const userAnswer = selectedAnswers[q._id];
-                                // Tìm kết quả chấm của câu này (nếu đã nộp)
                                 const resultData = submitResult?.details?.find(d => d.questionId === q._id);
 
                                 return (
@@ -254,7 +314,7 @@ export default function TestDetailPage() {
                                         ref={(el) => (questionRefs.current[q._id] = el)}
                                         className={`
                                             p-5 md:p-8 rounded-2xl bg-white shadow-sm border transition-all scroll-mt-48
-                                            ${submitResult
+                                            ${isReviewing
                                             ? (resultData?.isCorrect ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30')
                                             : 'border-slate-200 hover:shadow-md'
                                         }
@@ -264,7 +324,7 @@ export default function TestDetailPage() {
                                         <div className="flex gap-4 mb-4">
                                             <span className={`
                                                 flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-lg transition-colors
-                                                ${submitResult
+                                                ${isReviewing
                                                 ? (resultData?.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')
                                                 : 'bg-blue-100 text-blue-600'
                                             }
@@ -283,27 +343,21 @@ export default function TestDetailPage() {
                                             {q.options.map((opt) => {
                                                 const isSelected = userAnswer === opt;
 
-                                                // --- Logic tô màu đáp án ---
                                                 let containerClass = "border-slate-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
                                                 let iconRender = null;
 
-                                                if (!submitResult) {
-                                                    // Trạng thái đang làm bài: Chỉ tô xanh cái đang chọn
+                                                if (!isReviewing) {
                                                     if (isSelected) containerClass = "border-blue-600 bg-blue-50 ring-1 ring-blue-600";
                                                 } else {
-                                                    // Trạng thái đã nộp:
                                                     const isCorrectAns = opt === resultData?.correctAnswer;
 
                                                     if (isCorrectAns) {
-                                                        // Đáp án đúng luôn xanh
                                                         containerClass = "border-green-500 bg-green-100 ring-1 ring-green-500";
                                                         iconRender = <CheckCircleOutlined className="text-green-600 text-xl ml-auto" />;
                                                     } else if (isSelected && !resultData?.isCorrect) {
-                                                        // Chọn sai thì đỏ
                                                         containerClass = "border-red-400 bg-red-50 ring-1 ring-red-400 opacity-80";
                                                         iconRender = <CloseCircleOutlined className="text-red-500 text-xl ml-auto" />;
                                                     } else {
-                                                        // Các câu khác làm mờ
                                                         containerClass = "border-slate-100 opacity-50";
                                                     }
                                                 }
@@ -312,38 +366,28 @@ export default function TestDetailPage() {
                                                     <div
                                                         key={opt}
                                                         onClick={() => handleSelect(q._id, opt)}
-                                                        className={`
-                                                            relative flex items-center gap-3 p-3 md:p-4 rounded-xl border-2 transition-all duration-200
-                                                            ${containerClass}
-                                                        `}
+                                                        className={`relative flex items-center gap-3 p-3 md:p-4 rounded-xl border-2 transition-all duration-200 ${containerClass}`}
                                                     >
-                                                        {/* Radio Circle UI (Chỉ hiện khi chưa nộp) */}
-                                                        {!submitResult && (
+                                                        {!isReviewing && (
                                                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-600' : 'border-slate-300'}`}>
                                                                 {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
                                                             </div>
                                                         )}
-
-                                                        <span className={`text-sm md:text-base font-medium ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
-                                                            {opt}
-                                                        </span>
-
+                                                        <span className={`text-sm md:text-base font-medium ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>{opt}</span>
                                                         {iconRender}
                                                     </div>
                                                 );
                                             })}
                                         </div>
 
-                                        {/* Giải thích / Lời giải (Chỉ hiện khi đã nộp) */}
-                                        {submitResult && (
+                                        {/* Giải thích / Lời giải (Chỉ hiện khi đang Review) */}
+                                        {isReviewing && (
                                             <motion.div
                                                 initial={{ height: 0, opacity: 0 }}
                                                 animate={{ height: 'auto', opacity: 1 }}
                                                 className="mt-6 ml-0 md:ml-14 p-4 bg-amber-50 rounded-xl border border-amber-200 text-slate-700 text-sm md:text-base"
                                             >
-                                                <div className="font-bold text-amber-800 mb-2 flex items-center gap-2">
-                                                    <FlagOutlined /> Giải thích chi tiết:
-                                                </div>
+                                                <div className="font-bold text-amber-800 mb-2 flex items-center gap-2"><FlagOutlined /> Giải thích chi tiết:</div>
                                                 <div className="leading-relaxed">
                                                     {resultData?.solution || (
                                                         <span className="italic text-slate-500">Không có lời giải chi tiết cho câu này. Đáp án đúng là: <strong>{resultData?.correctAnswer}</strong></span>
