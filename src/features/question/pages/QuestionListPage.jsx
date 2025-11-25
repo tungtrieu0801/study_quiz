@@ -256,7 +256,7 @@ export default function QuestionListPage() {
                             <Input placeholder="VD: Nội dung câu A" />
                         </Form.Item>
                         <Form.Item label="Khối lớp" name="gradeLevel" rules={[{ required: true }]}>
-                            <Input placeholder="VD: 10, 11, 12" />
+                            <Input placeholder="VD: 1, 2, 3, 4, 5" />
                         </Form.Item>
                     </div>
 
