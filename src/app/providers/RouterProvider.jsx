@@ -6,12 +6,12 @@ import MainLayout from "../layout/MainLayout";
 import LoginPage from "../../features/auth/pages/LoginPage.jsx";
 import HomePage from "../../features/home/page/HomePage.jsx";
 import TestListPage from "../../features/test-list/pages/TestListPage.jsx";
-import TestDetailPage from "../../features/home/page/TestDetailPage.jsx";
 import MenuPage from "../../features/admin-management/pages/MenuPage.jsx";
 import StudentListPages from "../../features/student-management/pages/StudentListPages.jsx";
 import TagListPage from "../../features/tags/pages/TagListPage.jsx";
 import QuestionListPage from "../../features/question/pages/QuestionListPage.jsx";
 import TestManagementPage from "../../features/test-list/pages/TestManagementPage.jsx";
+import TestDetailPage from "../../features/test-list/pages/TestDetailPage.jsx";
 
 // PrivateRoute
 const PrivateRoute = ({ element }) => {
