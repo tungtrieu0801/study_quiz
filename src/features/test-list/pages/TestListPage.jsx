@@ -36,8 +36,7 @@ export default function TestListPage() {
 
     const [form] = Form.useForm();
 
-    // --- 1. LẤY USER TỪ AUTH ---
-    const { user, isAdmin } = useAuth(); // Giả sử useAuth trả về isAdmin hoặc check user.role === 'admin'
+    const { user, isAdmin } = useAuth();
     const navigate = useNavigate();
 
     // --- GET DATA ---
@@ -54,7 +53,8 @@ export default function TestListPage() {
             });
 
             if (res.data.success) {
-                setTests(res.data.data);
+                // Đảm bảo dữ liệu nhận về là mảng, nếu không thì dùng mảng rỗng
+                setTests(res.data.data || []);
             } else {
                 message.error(res.data.message || "Không tải được dữ liệu");
             }
@@ -67,15 +67,10 @@ export default function TestListPage() {
 
     // --- ACTIONS ---
     const handleClickTest = (testId) => {
-        console.log("--- DEBUG AUTH ---");
-        console.log("User Object:", user);
-        console.log("User Role:", user?.role);
         // LOGIC CHECK ROLE QUAN TRỌNG Ở ĐÂY
         if (user?.role === 'admin') {
-            // Nếu là admin -> Vào trang quản lý đề (TestManagementPage)
             navigate(`/admin/test/${testId}`);
         } else {
-            // Nếu là học sinh -> Vào trang thi (TestDetailPage)
             navigate(`/test/${testId}`);
         }
     };
@@ -195,12 +190,29 @@ export default function TestListPage() {
                             {tests.map((test) => (
                                 <motion.div key={test._id} variants={itemVariants} layout>
                                     <Card
-                                        hoverable
-                                        className="h-full rounded-2xl border border-slate-200 bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden"
-                                        onClick={() => handleClickTest(test._id)}
-                                        bodyStyle={{ padding: "24px", height: "100%", display: "flex", flexDirection: "column" }}
+                                        hoverable={!test.isTaken}
+                                        className={`h-full rounded-2xl border transition-all duration-300 group overflow-hidden flex flex-col
+                                            ${test.isTaken ? 'bg-gray-50 border-gray-200 opacity-80' : 'bg-white border-slate-200 hover:shadow-xl hover:-translate-y-1'}
+                                        `}
+                                        onClick={() => !test.isTaken && handleClickTest(test._id)}
+
+                                        // SỬA CẢ bodyStyle VÀ DATA CONSUMPTION
+                                        styles={{
+                                            body: {
+                                                padding: "24px",
+                                                height: "100%",
+                                                display: "flex",
+                                                flexDirection: "column"
+                                            }
+                                        }}
                                     >
                                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                                        {test.isTaken && (
+                                            <div className="absolute top-0 right-0 bg-gray-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl z-10">
+                                                ĐÃ HOÀN THÀNH
+                                            </div>
+                                        )}
 
                                         <div className="flex justify-between items-start mb-4">
                                             <Tag
@@ -210,7 +222,6 @@ export default function TestListPage() {
                                                 <ReadOutlined /> {test.gradeLevel ? `Khối ${test.gradeLevel}` : "Đại trà"}
                                             </Tag>
 
-                                            {/* Icon chỉ báo Admin */}
                                             {user?.role === 'admin' && (
                                                 <div className="text-slate-400 bg-slate-100 p-1.5 rounded-md">
                                                     <SettingOutlined />
@@ -218,13 +229,15 @@ export default function TestListPage() {
                                             )}
                                         </div>
 
+                                        {/* Thêm fallback cho Title */}
                                         <h3 className="text-xl font-bold text-slate-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                                            {test.title}
+                                            {test.title || "Tên đề thi bị thiếu"}
                                         </h3>
 
+                                        {/* Thêm fallback cho Description */}
                                         <div className="flex-grow">
                                             <p className="text-slate-500 text-sm line-clamp-3 mb-4 leading-relaxed">
-                                                {test.description || "Chưa có mô tả cho bài kiểm tra này."}
+                                                {test.description || "Không có mô tả chi tiết."}
                                             </p>
                                         </div>
 
@@ -232,6 +245,7 @@ export default function TestListPage() {
 
                                         <div className="flex items-center justify-between text-slate-400 text-sm">
                                             <div className="flex items-center gap-4">
+                                                {/* Thêm fallback cho Duration */}
                                                 <div className="flex items-center gap-1.5" title="Thời gian làm bài">
                                                     <ClockCircleOutlined className="text-blue-500" />
                                                     <span className="font-medium text-slate-600">{test.duration || "N/A"}</span>
@@ -254,14 +268,9 @@ export default function TestListPage() {
                     </motion.div>
                 )}
 
-                {/* --- MODAL CREATE TEST --- */}
+                {/* MODAL CREATE TEST (Giữ nguyên) */}
                 <Modal
-                    title={
-                        <div className="flex items-center gap-2 text-xl font-bold text-slate-700 mb-6">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><FormOutlined /></div>
-                            Tạo đề thi mới
-                        </div>
-                    }
+                    title={<div className="flex items-center gap-2 text-xl font-bold text-slate-700 mb-6"><div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><FormOutlined /></div>Tạo đề thi mới</div>}
                     open={isModalOpen}
                     onCancel={handleCancelModal}
                     footer={null}
@@ -269,54 +278,29 @@ export default function TestListPage() {
                     className="p-0 rounded-3xl overflow-hidden"
                     width={600}
                 >
-                    <Form
-                        form={form}
-                        layout="vertical"
-                        onFinish={handleCreateTest}
-                        className="mt-4"
-                    >
-                        <Form.Item
-                            label={<span className="font-semibold text-slate-600">Tên bài kiểm tra</span>}
-                            name="title"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên bài kiểm tra!' }]}
-                        >
+                    <Form form={form} layout="vertical" onFinish={handleCreateTest} className="mt-4">
+                        <Form.Item label={<span className="font-semibold text-slate-600">Tên bài kiểm tra</span>} name="title" rules={[{ required: true, message: 'Vui lòng nhập tên bài kiểm tra!' }]}>
                             <Input size="large" placeholder="VD: Kiểm tra 15 phút Đại số" className="rounded-xl py-2.5" />
                         </Form.Item>
-
                         <div className="grid grid-cols-2 gap-4">
-                            <Form.Item
-                                label={<span className="font-semibold text-slate-600">Thời gian (phút)</span>}
-                                name="duration"
-                                rules={[{ required: true, message: 'Nhập thời gian!' }]}
-                            >
+                            <Form.Item label={<span className="font-semibold text-slate-600">Thời gian (phút)</span>} name="duration" rules={[{ required: true, message: 'Nhập thời gian!' }]}>
                                 <InputNumber size="large" placeholder="40" min={1} className="w-full rounded-xl py-1" />
                             </Form.Item>
-
-                            <Form.Item
-                                label={<span className="font-semibold text-slate-600">Khối lớp</span>}
-                                name="gradeLevel"
-                                rules={[{ required: true, message: 'Chọn khối lớp!' }]}
-                            >
+                            <Form.Item label={<span className="font-semibold text-slate-600">Khối lớp</span>} name="gradeLevel" rules={[{ required: true, message: 'Chọn khối lớp!' }]}>
                                 <Select size="large" placeholder="Chọn khối" className="rounded-xl">
-                                    {[1, 2, 3, 4, 5].map(g => (
-                                        <Select.Option key={g} value={g.toString()}>{`Khối ${g}`}</Select.Option>
-                                    ))}
-                                    {/*<Select.Option value="Khác">Khác</Select.Option>*/}
+                                    {[1, 2, 3, 4, 5].map(g => (<Select.Option key={g} value={g.toString()}>{`Khối ${g}`}</Select.Option>))}
                                 </Select>
                             </Form.Item>
                         </div>
-
                         <Form.Item label={<span className="font-semibold text-slate-600">Mô tả chi tiết</span>} name="description">
                             <Input.TextArea rows={4} placeholder="Ghi chú..." className="rounded-xl" />
                         </Form.Item>
-
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                             <Button size="large" onClick={handleCancelModal} className="rounded-xl">Hủy bỏ</Button>
                             <Button type="primary" htmlType="submit" size="large" loading={creating} className="rounded-xl bg-blue-600">Tạo bài thi</Button>
                         </div>
                     </Form>
                 </Modal>
-
             </div>
         </div>
     );
