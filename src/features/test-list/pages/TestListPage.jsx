@@ -62,14 +62,14 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
             dataIndex: 'title',
             render: (t, record) => (
                 <div className="flex flex-col">
-                    <span className="font-medium text-slate-700 line-clamp-2 md:line-clamp-1">
-                        {t}
-                    </span>
+                <span className="font-medium text-slate-700 line-clamp-2 md:line-clamp-1">
+                    {t}
+                </span>
                     <span className="text-[11px] text-gray-400 md:hidden mt-0.5">
-                        {new Date(record.updatedAt).toLocaleString('vi-VN', {
-                            day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'
-                        })}
-                    </span>
+                    {new Date(record.updatedAt).toLocaleString('vi-VN', {
+                        day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'
+                    })}
+                </span>
                 </div>
             )
         },
@@ -94,17 +94,26 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
             render: (d) => <span className="text-gray-500">{new Date(d).toLocaleString('vi-VN')}</span>
         },
         {
-            title: '',
+            // Cột này hiện trên mọi kích thước màn hình
+            title: 'Hành động',
             key: 'action',
             align: 'center',
-            width: 50,
+            width: 110, // Tăng width lên 110 để chứa đủ chữ và icon
             render: (_, record) => (
                 <Button
                     type="text"
-                    icon={<EyeOutlined className="text-blue-500 text-lg"/>}
                     onClick={() => onViewLeaderboard(record._id, record.title)}
-                    className="flex items-center justify-center"
-                />
+                    // Dùng text-xs (rất nhỏ) trên mobile để cố gắng không bị vỡ
+                    className="flex items-center justify-center text-xs md:text-sm p-0 h-auto"
+                >
+                    {/* Icon (luôn hiển thị, dùng margin nhỏ mr-0.5) */}
+                    <EyeOutlined className="text-blue-500 text-lg mr-0.5"/>
+
+                    {/* Text "Xem hạng" (luôn hiển thị, kích thước chữ nhỏ) */}
+                    <span className="font-medium text-slate-700">
+                    Xem hạng
+                </span>
+                </Button>
             )
         }
     ];
