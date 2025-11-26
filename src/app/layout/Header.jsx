@@ -132,7 +132,7 @@ export default function Header() {
 
             // Logic điều hướng sau khi đánh dấu đọc
             if (item.data?.testId) {
-                navigate(`/exam/${item.data.testId}`);
+                navigate(`/tests`);
                 setOpenPopover(null); // Đóng popover
             }
 
