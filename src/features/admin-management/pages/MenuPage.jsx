@@ -47,22 +47,22 @@ export default function MenuPage() {
             color: "text-emerald-600",
             bg: "bg-emerald-50",
         },
-        {
-            label: "Thêm bài kiểm tra",
-            desc: "Tạo đề thi mới",
-            icon: <PlusCircleOutlined />,
-            action: "add-test",
-            color: "text-orange-600",
-            bg: "bg-orange-50",
-        },
-        {
-            label: "Thêm câu hỏi",
-            desc: "Soạn thảo câu hỏi",
-            icon: <PlusCircleOutlined />,
-            action: "add-question",
-            color: "text-rose-600",
-            bg: "bg-rose-50",
-        },
+        // {
+        //     label: "Thêm bài kiểm tra",
+        //     desc: "Tạo đề thi mới",
+        //     icon: <PlusCircleOutlined />,
+        //     action: "add-test",
+        //     color: "text-orange-600",
+        //     bg: "bg-orange-50",
+        // },
+        // {
+        //     label: "Thêm câu hỏi",
+        //     desc: "Soạn thảo câu hỏi",
+        //     icon: <PlusCircleOutlined />,
+        //     action: "add-question",
+        //     color: "text-rose-600",
+        //     bg: "bg-rose-50",
+        // },
     ];
 
     const handleClick = (action) => {
@@ -107,7 +107,7 @@ export default function MenuPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 p-6 md:p-12 font-sans flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 p-6 md:p-12 font-sans flex mt-5 justify-center">
             <div className="max-w-7xl w-full">
                 {/* Header Section */}
                 <div className="mb-12 text-center">

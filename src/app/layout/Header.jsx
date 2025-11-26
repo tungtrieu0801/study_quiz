@@ -5,9 +5,10 @@ import {
     UserOutlined,
     BellOutlined,
     MessageOutlined,
-    CaretDownOutlined
+    CaretDownOutlined,
+    ExclamationCircleOutlined
 } from "@ant-design/icons";
-import { Avatar, Dropdown, Badge, Popover, List, Button, Switch, Empty, message } from "antd";
+import { Avatar, Dropdown, Badge, Popover, List, Button, Switch, Empty, message, Modal } from "antd";
 import { useNavigate } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
 import { useChat } from "../providers/ChatProvider.jsx";
@@ -67,6 +68,14 @@ export default function Header() {
     const [isDarkMode, setIsDarkMode] = useState(() => {
         return localStorage.getItem("theme") === "dark";
     });
+
+    const [modal, contextHolder] = Modal.useModal();
+
+    const handleMenuClick = (e) => {
+        if (e.key === 'logout') {
+            handleLogout();
+        }
+    };
 
     useEffect(() => {
         const html = document.documentElement;
@@ -159,9 +168,25 @@ export default function Header() {
 
     // --- XỬ LÝ LOGOUT ---
     const handleLogout = () => {
-        if (isChatOpen) toggleChat();
-        logout();
-        navigate('/login');
+        console.log("click")
+        modal.confirm({
+            title: 'Xác nhận đăng xuất',
+            icon: <ExclamationCircleOutlined />,
+            content: 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?',
+            okText: 'Đăng xuất',
+            cancelText: 'Hủy',
+            okType: 'danger', // Nút OK màu đỏ để cảnh báo
+            centered: true,
+            onOk() {
+                // Logic đăng xuất thực sự chạy khi bấm nút "Đăng xuất"
+                if (isChatOpen) toggleChat();
+                logout();
+                navigate('/login');
+            },
+            onCancel() {
+                // Không làm gì nếu bấm Hủy
+            },
+        })
     };
 
     const badgeStyle = {
@@ -191,15 +216,24 @@ export default function Header() {
             ),
         },
         { type: 'divider' },
+        // {
+        //     key: "setting",
+        //     label: (
+        //         <div className="flex items-center gap-2  font-medium">
+        //             {/*<LoginOutlined />*/}
+        //             Setting
+        //         </div>
+        //     ),
+        // },
         {
             key: "logout",
             label: (
-                <div className="flex items-center gap-2 text-red-500 font-medium" onClick={handleLogout}>
+                <div className="flex items-center gap-2 text-red-500 font-medium">
                     <LoginOutlined />
                     Đăng xuất
                 </div>
             ),
-        }
+        },
     ];
 
     // --- NỘI DUNG POPUP THÔNG BÁO ---
@@ -273,6 +307,8 @@ export default function Header() {
     return (
         <header className="bg-white dark:bg-[#242526] shadow-sm px-4 md:px-6 h-14 sticky top-0 z-50 flex justify-between items-center border-b border-gray-100 dark:border-[#393a3b] transition-colors duration-300">
             {/* LOGO */}
+            {/*contextholder controler model*/}
+            {contextHolder}
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate(user?.role === "admin" ? "/menu" : "/")}>
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-sm">
                     H
@@ -329,16 +365,30 @@ export default function Header() {
                     </Popover>
 
                     {/* User Profile */}
-                    <Dropdown menu={{ items: userItems }} trigger={["click"]} placement="bottomRight">
-                        <div className="ml-1 cursor-pointer">
-                            <Avatar
-                                size={40}
-                                src={user.avatar}
-                                icon={<UserOutlined />}
-                                className="border border-gray-200 dark:border-gray-600 bg-gray-200"
-                            />
-                            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-gray-100 dark:bg-[#242526] rounded-full flex items-center justify-center border border-white dark:border-[#242526] md:hidden">
-                                <CaretDownOutlined className="text-[8px] text-black dark:text-white"/>
+                    <Dropdown menu={{ items: userItems, onClick: handleMenuClick }} trigger={["click"]} placement="bottomRight">
+                        <div className="ml-1 cursor-pointer flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#3a3b3c] transition-colors">
+                            {/* Avatar */}
+                            <div className="relative">
+                                <Avatar
+                                    size={40}
+                                    src={user.avatar}
+                                    icon={<UserOutlined />}
+                                    className="border border-gray-200 dark:border-gray-600 bg-gray-200"
+                                />
+                                {/* Dấu mũi tên nhỏ chỉ hiện ở mobile (khi tên bị ẩn) */}
+                                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-gray-100 dark:bg-[#242526] rounded-full flex items-center justify-center border border-white dark:border-[#242526] md:hidden">
+                                    <CaretDownOutlined className="text-[8px] text-black dark:text-white" />
+                                </div>
+                            </div>
+
+                            {/* Phần hiển thị tên - Chỉ hiện trên màn hình MD trở lên */}
+                            <div className="hidden md:flex flex-col items-start">
+            <span className="text-sm font-bold text-gray-700 dark:text-gray-200 leading-tight">
+                {/* Thay user.fullName bằng trường tên trong database của bạn */}
+                {user.fullName || user.username || "Người dùng"}
+            </span>
+                                {/* Nếu muốn hiện thêm vai trò (Admin/User) thì bỏ comment dòng dưới */}
+                                {/* <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">{user.role === 'admin' ? 'Quản trị viên' : 'Học viên'}</span> */}
                             </div>
                         </div>
                     </Dropdown>
