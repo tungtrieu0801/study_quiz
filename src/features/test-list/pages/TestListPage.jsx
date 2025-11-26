@@ -15,9 +15,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import useAuth from "../../../app/hooks/useAuth";
 
 // --- COMPONENT: STUDENT DASHBOARD ---
-// ... giữ nguyên các imports ở trên
-
-// --- COMPONENT: STUDENT DASHBOARD ---
 const StudentDashboard = ({ tests, onViewLeaderboard }) => {
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     // Thêm state để lưu số lượng cột hiển thị (mặc định là 5)
@@ -50,7 +47,6 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
         ? (takenTests.reduce((acc, cur) => acc + (cur.score || 0), 0) / totalTaken).toFixed(1)
         : 0;
 
-    // --- SỬA ĐỔI: Sử dụng chartLimit thay vì số cứng số 5 ---
     // Lấy 'chartLimit' bài mới nhất, sau đó đảo ngược để hiển thị theo trục thời gian (cũ -> mới)
     const chartData = takenTests.slice(0, chartLimit).reverse();
 
@@ -98,18 +94,14 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
             title: 'Hành động',
             key: 'action',
             align: 'center',
-            width: 110, // Tăng width lên 110 để chứa đủ chữ và icon
+            width: 110,
             render: (_, record) => (
                 <Button
                     type="text"
                     onClick={() => onViewLeaderboard(record._id, record.title)}
-                    // Dùng text-xs (rất nhỏ) trên mobile để cố gắng không bị vỡ
                     className="flex items-center justify-center text-xs md:text-sm p-0 h-auto"
                 >
-                    {/* Icon (luôn hiển thị, dùng margin nhỏ mr-0.5) */}
                     <EyeOutlined className="text-blue-500 text-lg mr-0.5"/>
-
-                    {/* Text "Xem hạng" (luôn hiển thị, kích thước chữ nhỏ) */}
                     <span className="font-medium text-slate-700">
                     Xem hạng
                 </span>
@@ -140,7 +132,6 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
                                 <Statistic
                                     title="Điểm trung bình"
                                     value={avgScore}
-                                    suffix="/ 10"
                                     valueStyle={{ color: parseFloat(avgScore) >= 8 ? '#52c41a' : '#1677ff' }}
                                 />
                             </div>
@@ -155,7 +146,6 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
                     </Col>
 
                     <Col xs={24} md={16}>
-                        {/* Cập nhật text hiển thị số lượng bài */}
                         <div className="text-xs text-slate-400 mb-2 text-center">
                             Biểu đồ điểm {chartLimit} bài thi gần nhất
                         </div>
@@ -206,13 +196,9 @@ const StudentDashboard = ({ tests, onViewLeaderboard }) => {
                     dataSource={takenTests}
                     columns={historyColumns}
                     rowKey="_id"
-                    pagination={{
-                        pageSize: 5,
-                        size: "small",
-                        hideOnSinglePage: true
-                    }}
+                    pagination={false} // BỎ PHÂN TRANG
                     size="small"
-                    scroll={{ x: 'max-content' }}
+                    scroll={{ x: 'max-content', y: 400 }} // Thêm scroll Y để cuộn nếu dài
                 />
             </Modal>
         </>
@@ -417,7 +403,16 @@ export default function TestListPage() {
                     open={leaderboardVisible} onCancel={() => setLeaderboardVisible(false)} footer={null} centered width={700}
                     zIndex={2000}
                 >
-                    {loadingLeaderboard ? <div className="text-center py-10"><Skeleton active /></div> : <Table dataSource={leaderboardData} columns={leaderboardColumns} rowKey="_id" pagination={{ pageSize: 5 }} size="middle"/>}
+                    {loadingLeaderboard ? <div className="text-center py-10"><Skeleton active /></div> :
+                        <Table
+                            dataSource={leaderboardData}
+                            columns={leaderboardColumns}
+                            rowKey="_id"
+                            pagination={false} // BỎ PHÂN TRANG
+                            size="middle"
+                            scroll={{ y: 400 }} // Thêm scroll Y
+                        />
+                    }
                 </Modal>
             </div>
         </div>
