@@ -7,6 +7,8 @@ import instance from "../../../shared/lib/axios.config";
 import QuestionTable from "../components/QuestionTable";
 import QuestionFormModal from "../components/QuestionFormModal";
 import QuestionDetailDrawer from "../components/QuestionDetailDrawer";
+import questionApi from "../api/questionApi.js";
+import {toast} from "react-toastify";
 
 export default function QuestionListPage() {
     // --- Data State ---
@@ -33,8 +35,8 @@ export default function QuestionListPage() {
         const fetchMetadata = async () => {
             try {
                 const [tRes, testRes] = await Promise.all([
-                    instance.get("/tag"),
-                    instance.get("/testList")
+                    questionApi.getTags(),
+                    questionApi.getTests()
                 ]);
 
                 // Xử lý Tags
@@ -57,14 +59,7 @@ export default function QuestionListPage() {
     const fetchQuestions = async (page = 1, pageSize = 10) => {
         setLoading(true);
         try {
-            // Truyền params page và size lên server
-            const res = await instance.get("/questions", {
-                params: {
-                    page: page,
-                    size: pageSize
-                }
-            });
-
+            const res = await  questionApi.getAll({ page, pageSize });
             if (res.data.success) {
                 setQuestions(res.data.data || []);
                 // Cập nhật state phân trang dựa trên total từ server trả về
@@ -126,14 +121,15 @@ export default function QuestionListPage() {
     // Logic Submit Form (Create/Update)
     const handleFormSuccess = async (values) => {
         try {
+            if (values.type === undefined) {
+                values.type = "SINGLE_CHOICE";
+            }
             if (editingQuestion) {
-                // UPDATE
-                await instance.put(`/questions/${editingQuestion._id}`, values);
-                message.success("Cập nhật thành công!");
+                await questionApi.update(editingQuestion._id, values);
+                toast.success("Cập nhật câu hỏi thành công");
             } else {
-                // CREATE
-                await instance.post("/questions", values);
-                message.success("Tạo câu hỏi thành công!");
+                await questionApi.create(values);
+                toast.success("Tạo câu hỏi thành công");
             }
 
             setModalOpen(false);

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Form, Input, Checkbox, Button, message, Row, Col, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import instance from "../../../shared/lib/axios.config";
+import questionApi from "../api/questionApi.js";
+import {toast} from "react-toastify";
 
 const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tests, refreshTags }) => {
     const [form] = Form.useForm();
@@ -26,28 +27,27 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
         }
     }, [open, initialValues, form]);
 
-    // API tạo tag riêng lẻ
-    const createNewTagApi = async (tagName) => {
+    const handleCreateNewTag = async (tagName) => {
         if (!tagName.trim()) return;
         try {
             setCreatingTag(true);
-            const res = await instance.post("/tag", {
+            const res = await questionApi.createTag({
                 name: tagName,
                 description: "Tự động tạo khi thêm câu hỏi"
             });
             if (res.data.success) {
-                message.success("Đã tạo tag mới!");
+                toast.success("Tạo thành công nhóm câu hỏi mới");
                 setNewTagName("");
-                await refreshTags(); // Load lại list tag từ cha để cập nhật UI
+                await refreshTags();
                 return res.data.data._id;
             }
         } catch (error) {
-            message.error("Lỗi tạo tag: " + error.message);
+            toast.error("Lỗi khi tạo nhóm câu hỏi");
             throw error;
         } finally {
             setCreatingTag(false);
         }
-    };
+    }
 
     const handleOk = async () => {
         try {
@@ -57,7 +57,7 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
             // Logic: Nếu user nhập tag mới mà quên bấm nút "Thêm" thì tự tạo luôn
             if (newTagName.trim()) {
                 try {
-                    const newTagId = await createNewTagApi(newTagName);
+                    const newTagId = await handleCreateNewTag(newTagName);
                     if (newTagId) finalTags = [...finalTags, newTagId];
                 } catch (e) {
                     return; // Dừng nếu lỗi
@@ -139,9 +139,9 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
                                     placeholder="Tên tag mới..."
                                     value={newTagName}
                                     onChange={(e) => setNewTagName(e.target.value)}
-                                    onPressEnter={(e) => { e.preventDefault(); createNewTagApi(newTagName); }}
+                                    onPressEnter={(e) => { e.preventDefault(); handleCreateNewTag(newTagName); }}
                                 />
-                                <Button onClick={() => createNewTagApi(newTagName)} loading={creatingTag} icon={<PlusOutlined />}>Thêm</Button>
+                                <Button onClick={() => handleCreateNewTag(newTagName)} loading={creatingTag} icon={<PlusOutlined />}>Thêm</Button>
                             </div>
                             <div className="border border-slate-200 rounded-lg p-3 max-h-32 overflow-y-auto bg-white">
                                 <Form.Item name="tags" noStyle>
