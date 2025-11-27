@@ -3,6 +3,7 @@ import { Form, Input, Button, message } from "antd";
 import instance from "../../../shared/lib/axios.config";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../../app/hooks/useAuth";
+import {toast} from "react-toastify";
 
 export default function LoginForm() {
     const [loading, setLoading] = useState(false);
@@ -17,7 +18,7 @@ export default function LoginForm() {
             if (res.data.success) {
                 await login(res.data.data);
 
-                message.success("Đăng nhập thành công!");
+                toast.success("🎉 Đăng nhập thành công!");
                 if ("admin" === res.data.data.user.role) {
                     navigate("/menu");
                 } else {
