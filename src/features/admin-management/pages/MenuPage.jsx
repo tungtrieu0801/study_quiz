@@ -23,7 +23,7 @@ export default function MenuPage() {
     // Thêm màu sắc và mô tả để giao diện sinh động hơn
     const items = [
         {
-            label: "Danh sách bài kiểm tra",
+            label: "Quản lí danh sách bài kiểm tra",
             desc: "Quản lý kho đề thi",
             icon: <UnorderedListOutlined/>,
             action: "tests",
@@ -31,7 +31,7 @@ export default function MenuPage() {
             bg: "bg-blue-50",
         },
         {
-            label: "Danh sách câu hỏi",
+            label: "Quản lí danh sách câu hỏi",
             desc: "Ngân hàng câu hỏi",
             icon: <UnorderedListOutlined/>,
             action: "question-list",
@@ -39,7 +39,7 @@ export default function MenuPage() {
             bg: "bg-indigo-50",
         },
         {
-            label: "Danh sách thẻ tag",
+            label: "Quản lí nhóm câu hỏi",
             desc: "Phân loại chủ đề",
             icon: <TagsOutlined/>,
             action: "tag-list",
@@ -47,7 +47,7 @@ export default function MenuPage() {
             bg: "bg-purple-50",
         },
         {
-            label: "Danh sách học sinh",
+            label: "Quản lí học sinh",
             desc: "Thông tin học viên",
             icon: <TeamOutlined/>,
             action: "student-list",
@@ -55,7 +55,7 @@ export default function MenuPage() {
             bg: "bg-emerald-50",
         },
         {
-            label: "Thêm bài kiểm tra",
+            label: "Thêm bài kiểm tra mới",
             desc: "Tạo đề thi mới",
             icon: <PlusCircleOutlined/>,
             action: "add-test",
@@ -63,7 +63,7 @@ export default function MenuPage() {
             bg: "bg-orange-50",
         },
         {
-            label: "Thêm câu hỏi",
+            label: "Thêm câu hỏi mới",
             desc: "Soạn thảo câu hỏi",
             icon: <PlusCircleOutlined/>,
             action: "add-question",
