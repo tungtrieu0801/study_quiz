@@ -13,6 +13,7 @@ import {
 } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
 import useAuth from "../../../app/hooks/useAuth";
+import useTestManagement from "../../../app/hooks/useTestManagement.js";
 
 // --- COMPONENT: STUDENT DASHBOARD ---
 const StudentDashboard = ({ tests, onViewLeaderboard }) => {
@@ -209,7 +210,6 @@ export default function TestListPage() {
     const [tests, setTests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [creating, setCreating] = useState(false);
     const [form] = Form.useForm();
 
     const [leaderboardVisible, setLeaderboardVisible] = useState(false);
@@ -220,6 +220,8 @@ export default function TestListPage() {
     const [isExpanded, setIsExpanded] = useState(false);
     const { user, isAdmin } = useAuth();
     const navigate = useNavigate();
+
+    const { createTest, creating } = useTestManagement();
 
     useEffect(() => { fetchTests(); }, []);
 
@@ -262,19 +264,27 @@ export default function TestListPage() {
 
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCancelModal = () => { setIsModalOpen(false); form.resetFields(); };
-    const handleCreateTest = async (values) => {
-        setCreating(true);
-        try {
-            const token = localStorage.getItem("authToken");
-            const payload = { ...values, duration: `${values.duration}p` };
-            const res = await instance.post("/testList", payload, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.data.success) {
-                message.success("Tạo thành công!");
-                setTests([res.data.data, ...tests]);
-                handleCancelModal();
-            }
-        } catch (error) { message.error("Lỗi tạo bài"); } finally { setCreating(false); }
-    };
+    // const handleCreateTest = async (values) => {
+    //     setCreating(true);
+    //     try {
+    //         const token = localStorage.getItem("authToken");
+    //         const payload = { ...values, duration: `${values.duration}p` };
+    //         const res = await instance.post("/testList", payload, { headers: { Authorization: `Bearer ${token}` } });
+    //         if (res.data.success) {
+    //             message.success("Tạo thành công!");
+    //             setTests([res.data.data, ...tests]);
+    //             handleCancelModal();
+    //         }
+    //     } catch (error) { message.error("Lỗi tạo bài"); } finally { setCreating(false); }
+    // };
+
+    const handleCreateTest = (values) => {
+        createTest(values, (newTestData) => {
+            // callback
+            setTests([newTestData, ...tests]);
+        })
+        handleCancelModal();
+    }
 
     const getGradeColor = (grade) => {
         if (!grade) return "blue";

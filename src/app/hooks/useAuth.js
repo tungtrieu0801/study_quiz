@@ -21,7 +21,7 @@ export default function useAuth() {
     return {
         user,
         role,
-        isAdmin,       // <--- BẠN CẦN TRẢ VỀ BIẾN NÀY!
+        isAdmin,
         isInitialized,
         login,
         logout
