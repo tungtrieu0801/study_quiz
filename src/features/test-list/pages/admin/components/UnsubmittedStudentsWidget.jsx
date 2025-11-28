@@ -1,31 +1,42 @@
 import React, { useEffect, useState } from "react";
-import { Card, Avatar, Tag, Button, Spin, Tooltip, Progress, Empty, Badge } from "antd";
+import { Card, Avatar, Button, Spin, Tooltip, Progress, Badge } from "antd";
 import {
     UserOutlined,
     CopyOutlined,
     ReloadOutlined,
     WarningOutlined,
-    CheckCircleFilled
+    CheckCircleFilled,
+    TrophyOutlined // <--- Import thêm icon Cúp
 } from "@ant-design/icons";
 import instance from "../../../../../shared/lib/axios.config";
-import {toast} from "react-toastify"; // Kiểm tra lại đường dẫn import này nhé
+import { toast } from "react-toastify";
 
 export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel }) {
     const [loading, setLoading] = useState(false);
+
+    // State danh sách
     const [unsubmittedStudents, setUnsubmittedStudents] = useState([]);
+    const [submittedList, setSubmittedList] = useState([]); // <--- State mới lưu người đã nộp
+
+    // State thống kê số lượng
     const [totalStudents, setTotalStudents] = useState(0);
     const [submittedCount, setSubmittedCount] = useState(0);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            // 1. Lấy thống kê
+            // 1. Lấy thống kê & Leaderboard
             const statsRes = await instance.get(`/testList/${testId}/statistics`);
             const leaderboard = statsRes.data.success ? statsRes.data.data.leaderboard : [];
+
+            // Lưu danh sách đã nộp để dùng cho nút Copy mới
+            setSubmittedList(leaderboard);
+
+            // Lấy danh sách ID để lọc
             const submittedIds = leaderboard.map(item => item.user._id);
             setSubmittedCount(submittedIds.length);
 
-            // 2. Lấy danh sách học sinh
+            // 2. Lấy danh sách tất cả học sinh
             const studentParams = { page: 0, size: 1000 };
             // if (gradeLevel) studentParams.gradeLevel = gradeLevel;
 
@@ -39,6 +50,7 @@ export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel
 
         } catch (error) {
             console.error(error);
+            toast.error("Lỗi tải dữ liệu tiến độ");
         } finally {
             setLoading(false);
         }
@@ -48,14 +60,41 @@ export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel
         if (testId) fetchData();
     }, [testId, gradeLevel]);
 
-    const handleCopyNames = () => {
-        const header = "Học sinh chưa làm đề kiểm tra " + testName + ":";
+    // --- COPY DANH SÁCH CHƯA LÀM ---
+    const handleCopyUnsubmittedNames = () => {
+        const header = `⚠️ DANH SÁCH CHƯA LÀM BÀI - ${testName || "Kiểm tra"}:`;
         const listStudent = unsubmittedStudents
             .map((s, index) => `${index + 1}. ${s.fullName}`)
             .join("\n");
         const finalContent = `${header}\n${listStudent}`;
         navigator.clipboard.writeText(finalContent);
-        toast.success("Đã copy danh sách!");
+        toast.success("Đã copy danh sách chưa làm!");
+    };
+
+    // --- COPY DANH SÁCH ĐÃ LÀM (KÈM TUYÊN DƯƠNG) ---
+    const handleCopySubmittedNames = () => {
+        const header = `🎉 BẢNG VÀNG THÀNH TÍCH - ${testName || "Kiểm tra"} 🎉\n-----------------------------------`;
+
+        const listText = submittedList.map((item, index) => {
+            const studentName = item.user?.fullName || item.user?.username || "Ẩn danh";
+            const score = item.score;
+
+            // Xử lý Top 3
+            if (index === 0) {
+                return `🥇 QUÁN QUÂN: ${studentName} - ${score} điểm (Xuất sắc)`;
+            } else if (index === 1) {
+                return `🥈 Á QUÂN: ${studentName} - ${score} điểm (Tuyệt vời)`;
+            } else if (index === 2) {
+                return `🥉 QUÝ QUÂN: ${studentName} - ${score} điểm (Rất tốt)`;
+            } else {
+                // Các bạn còn lại
+                return `${index + 1}. ${studentName} (${score} điểm)`;
+            }
+        }).join("\n");
+
+        const finalContent = `${header}\n${listText}`;
+        navigator.clipboard.writeText(finalContent);
+        toast.success("Đã copy bảng thành tích!");
     };
 
     // Tính phần trăm
@@ -74,7 +113,6 @@ export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel
                     <div className="flex justify-between mb-2">
                         <div className="flex items-center gap-2">
                             <span className="font-bold text-lg text-slate-700">Tiến độ nộp bài</span>
-                            {/*{gradeLevel && <Tag color="blue" className="rounded-full px-3">Khối {gradeLevel}</Tag>}*/}
                         </div>
                         <span className="font-semibold text-slate-500">
                             <span className="text-blue-600 text-lg">{submittedCount}</span> / {totalStudents} đã nộp
@@ -92,23 +130,35 @@ export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel
 
             {/* --- BODY: DANH SÁCH --- */}
             <div className="p-5 bg-slate-50/50">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                     <div className="flex items-center gap-2 text-slate-600">
                         <WarningOutlined className="text-orange-500" />
                         <span className="font-medium">Danh sách chưa làm bài ({unsubmittedStudents.length}):</span>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Tooltip title="Làm mới dữ liệu">
                             <Button icon={<ReloadOutlined />} onClick={fetchData} className="bg-white border-slate-200 hover:text-blue-600" />
                         </Tooltip>
+
+                        {/* NÚT MỚI: COPY ĐÃ LÀM */}
+                        <Button
+                            icon={<TrophyOutlined />}
+                            onClick={handleCopySubmittedNames}
+                            disabled={submittedList.length === 0}
+                            className="bg-white text-yellow-600 border-yellow-200 hover:border-yellow-500 hover:text-yellow-700 hover:bg-yellow-50"
+                        >
+                            Copy danh sách học sinh đã làm bài bài
+                        </Button>
+
+                        {/* NÚT CŨ: COPY CHƯA LÀM */}
                         <Button
                             icon={<CopyOutlined />}
-                            onClick={handleCopyNames}
+                            onClick={handleCopyUnsubmittedNames}
                             disabled={unsubmittedStudents.length === 0}
                             className="bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600"
                         >
-                            Copy danh sách để gửi vào nhóm
+                            Copy danh sách học sinh chưa làm
                         </Button>
                     </div>
                 </div>
@@ -119,8 +169,8 @@ export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel
                         <span className="text-green-700 font-semibold">Tuyệt vời! Tất cả học sinh đã hoàn thành bài thi.</span>
                     </div>
                 ) : (
-                    /* GRID HỌC SINH - Sử dụng CSS Grid của Tailwind */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-4">
+                    /* GRID HỌC SINH */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {unsubmittedStudents.map((student) => (
                             <div
                                 key={student._id}
@@ -131,13 +181,15 @@ export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel
                                         size={42}
                                         icon={<UserOutlined />}
                                         className="bg-orange-100 text-orange-600 flex-shrink-0"
-                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.username}`} // (Optional) Thêm avatar ngẫu nhiên cho sinh động
+                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.username}`}
                                     />
                                 </Badge>
                                 <div className="overflow-hidden">
                                     <div className="font-bold text-slate-700 truncate group-hover:text-blue-600 transition-colors" title={student.fullName}>
                                         {student.fullName}
                                     </div>
+                                    {/* Thêm username cho dễ nhận diện */}
+                                    <div className="text-xs text-slate-400">@{student.username}</div>
                                 </div>
                             </div>
                         ))}
