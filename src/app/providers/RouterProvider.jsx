@@ -9,7 +9,7 @@ import MenuPage from "../../features/admin-management/pages/MenuPage.jsx";
 import StudentListPages from "../../features/student-management/pages/StudentListPages.jsx";
 import TagListPage from "../../features/tags/pages/TagListPage.jsx";
 import QuestionListPage from "../../features/question/pages/QuestionListPage.jsx";
-import TestManagementPage from "../../features/test-list/pages/TestManagementPage.jsx";
+import TestManagementPage from "../../features/test-list/pages/admin/TestManagementPage.jsx";
 import TestDetailPage from "../../features/test-list/pages/TestDetailPage.jsx";
 
 // PrivateRoute
