@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button, Card, Tag, message, Typography, Modal, Table, Avatar } from "antd";
+import { Button, Card, Tag, message, Modal, Table, Avatar } from "antd";
 import {
     PlusOutlined, ArrowLeftOutlined, FileTextOutlined, PieChartOutlined,
     TrophyOutlined, UserOutlined
@@ -24,11 +24,16 @@ export default function TestManagementPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
 
-    // --- STATE ---
+    // --- STATE CHÍNH ---
     const [testInfo, setTestInfo] = useState(null);
     const [currentQuestions, setCurrentQuestions] = useState([]);
-    const [allQuestions, setAllQuestions] = useState([]);
+
+    // --- STATE CHO MODAL THÊM CÂU HỎI (MỚI) ---
+    const [modalQuestions, setModalQuestions] = useState([]); // List câu hỏi trong modal
+    const [modalPagination, setModalPagination] = useState({ current: 1, pageSize: 10, total: 0 }); // Phân trang 10 câu
+    const [modalLoading, setModalLoading] = useState(false);
     const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
+
     const [allTags, setAllTags] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -79,38 +84,66 @@ export default function TestManagementPage() {
         }
     };
 
-    const fetchAllQuestions = async () => {
+    // --- HÀM MỚI: QUERY DATA CHO MODAL (PAGINATION) ---
+    const fetchQuestionsForModal = async (page = 1, pageSize = 10) => {
+        setModalLoading(true);
         try {
-            const res = await instance.get("/questions");
+            const res = await instance.get(`/questions`, {
+                params: { page, pageSize }
+            });
             if (res.data.success) {
-                const all = res.data.data || [];
-                const ids = currentQuestions.map(q => q._id);
-                setAllQuestions(all.filter(q => !ids.includes(q._id)));
+                setModalQuestions(res.data.data || []);
+                setModalPagination({
+                    current: page,
+                    pageSize: pageSize,
+                    total: res.data.total || 0
+                });
             }
-        } catch (e) {}
+        } catch (e) {
+            message.error("Lỗi tải danh sách ngân hàng câu hỏi");
+        } finally {
+            setModalLoading(false);
+        }
     };
 
     // --- ACTIONS ---
     const handleOpenAddModal = () => {
-        fetchAllQuestions();
-        if (allTags.length === 0) fetchTagsList();
         setSelectedQuestionIds([]);
+        if (allTags.length === 0) fetchTagsList();
+        // Mở modal là load trang 1, 10 items
+        fetchQuestionsForModal(1, 10);
         setModalVisible(true);
+    };
+
+    const handleModalPageChange = (newPagination) => {
+        fetchQuestionsForModal(newPagination.current, newPagination.pageSize);
     };
 
     const handleAddQuestionsToTest = async () => {
         if (!selectedQuestionIds.length) return;
         setSaving(true);
         try {
+            // Duyệt qua các ID đã chọn để update
             await Promise.all(selectedQuestionIds.map(async qId => {
-                const q = allQuestions.find(item => item._id === qId);
-                if (!q) return;
-                const newIds = [...new Set([...(q.testIds || []), testId])];
+                // Kiểm tra xem câu hỏi có trong trang hiện tại không
+                let qData = modalQuestions.find(q => q._id === qId);
+
+                // Nếu user chọn ở trang khác (không có trong modalQuestions hiện tại), cần fetch lẻ để lấy testIds cũ
+                if (!qData) {
+                    const res = await instance.get(`/questions/${qId}`);
+                    qData = res.data.data;
+                }
+
+                if (!qData) return;
+
+                // Thêm testId hiện tại vào mảng testIds của câu hỏi
+                const newIds = [...new Set([...(qData.testIds || []), testId])];
                 return instance.put(`/questions/${qId}`, { testIds: newIds });
             }));
-            message.success("Đã thêm!");
+
+            message.success("Đã thêm câu hỏi vào đề!");
             setModalVisible(false);
-            fetchData();
+            fetchData(); // Reload lại danh sách câu hỏi của đề
         } catch (e) {
             message.error("Lỗi thêm câu hỏi");
         } finally {
@@ -124,7 +157,7 @@ export default function TestManagementPage() {
             if (!q) return;
             const newIds = (q.testIds || []).filter(id => id !== testId);
             await instance.put(`/questions/${qId}`, { testIds: newIds });
-            message.success("Đã xóa");
+            message.success("Đã xóa khỏi đề thi");
             setCurrentQuestions(prev => prev.filter(item => item._id !== qId));
         } catch (e) {
             message.error("Lỗi xóa câu hỏi");
@@ -289,12 +322,23 @@ export default function TestManagementPage() {
                 </motion.div>
 
                 {/* --- MODALS --- */}
+
+                {/* MODAL THÊM CÂU HỎI ĐÃ CẬP NHẬT */}
                 <AddQuestionModal
                     open={modalVisible}
                     onCancel={() => setModalVisible(false)}
-                    allQuestions={allQuestions}
+
+                    // Props dữ liệu & phân trang
+                    loading={modalLoading}
+                    questions={modalQuestions}
+                    pagination={modalPagination}
+                    onPageChange={handleModalPageChange}
+
+                    // Logic chọn
+                    existingQuestionIds={currentQuestions.map(q => q._id)}
                     selectedIds={selectedQuestionIds}
                     setSelectedIds={setSelectedQuestionIds}
+
                     onAdd={handleAddQuestionsToTest}
                     saving={saving}
                 />
