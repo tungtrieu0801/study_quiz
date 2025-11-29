@@ -3,7 +3,7 @@ import { Form, Input, Button, message } from "antd";
 import instance from "../../../shared/lib/axios.config";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../../app/hooks/useAuth";
-import {toast} from "react-toastify";
+import { toast } from "react-toastify";
 
 export default function LoginForm() {
     const [loading, setLoading] = useState(false);
@@ -35,14 +35,23 @@ export default function LoginForm() {
     };
 
     return (
-        <Form layout="vertical" onFinish={onFinish} className="space-y-4">
-            {/* UI giữ nguyên */}
+        <Form
+            layout="vertical"
+            onFinish={onFinish}
+            className="space-y-4"
+            // Giúp trình duyệt hiểu đây là form có thể nhớ thông tin
+            autoComplete="on"
+        >
             <Form.Item
                 label={<span className="font-medium">Tên đăng nhập</span>}
                 name="username"
                 rules={[{ required: true, message: "Vui lòng nhập tên đăng nhập!" }]}
             >
-                <Input className="h-10" />
+                <Input
+                    className="h-10"
+                    // Quan trọng: Báo hiệu đây là trường username để trình duyệt điền
+                    autoComplete="username"
+                />
             </Form.Item>
 
             <Form.Item
@@ -50,7 +59,11 @@ export default function LoginForm() {
                 name="password"
                 rules={[{ required: true, message: "Vui lòng nhập mật khẩu!" }]}
             >
-                <Input.Password className="h-10" />
+                <Input.Password
+                    className="h-10"
+                    // Quan trọng: Báo hiệu đây là mật khẩu hiện tại
+                    autoComplete="current-password"
+                />
             </Form.Item>
 
             <Button
