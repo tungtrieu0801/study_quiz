@@ -13,8 +13,6 @@ import { useNavigate } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
 import { useChat } from "../providers/ChatProvider.jsx";
 import instance from "../../shared/lib/axios.config.js";
-// Import axios instance của bạn (nơi đã config token)
-// Nếu chưa có file này, hãy dùng axios thường và thêm header Authorization thủ công
 
 // --- COMPONENT CIRCLE BUTTON ---
 const CircleButton = ({ icon, onClick, active, count, badgeStyle }) => (
@@ -58,6 +56,14 @@ export default function Header() {
     const navigate = useNavigate();
     const [openPopover, setOpenPopover] = useState(null);
     const { toggleChat, isOpen: isChatOpen } = useChat();
+
+    // Config tab navigation
+    const navItems = [
+        { label: "Trang chủ", path: "/menu" },
+        { label: "Kho đề thi", path: "/tests" },
+        { label: "Kho câu hỏi", path: "/questions" },
+        { label: "Quản lí học sinh", path: "/students" },
+    ]
 
     // --- STATE CHO NOTIFICATION ---
     const [notifications, setNotifications] = useState([]);
@@ -315,6 +321,29 @@ export default function Header() {
                 </div>
                 <span className="hidden md:block text-2xl font-bold text-blue-600 tracking-tight">Học Vui</span>
             </div>
+            {user && (
+                <nav className="hidden md:flex items-center gap-1">
+                    {navItems.map((item) => {
+                        // Kiểm tra xem tab hiện tại có đang active không
+                        const isActive = location.pathname === item.path;
+                        return (
+                            <div
+                                key={item.path}
+                                onClick={() => navigate(item.path)}
+                                className={`
+                                        px-4 py-2 rounded-lg cursor-pointer font-medium text-lg transition-all duration-200
+                                        ${isActive
+                                    ? 'bg-blue-50 text-blue-600 dark:bg-[#2d88ff1a] dark:text-blue-400'
+                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-[#3a3b3c] dark:hover:text-gray-100'
+                                }
+                                    `}
+                            >
+                                {item.label}
+                            </div>
+                        );
+                    })}
+                </nav>
+            )}
 
             {/* RIGHT ACTIONS */}
             {user ? (
