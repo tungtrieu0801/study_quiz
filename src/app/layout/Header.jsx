@@ -52,7 +52,7 @@ const formatTime = (dateString) => {
 };
 
 export default function Header() {
-    const { user, logout } = useAuth();
+    const { user, role, logout } = useAuth();
     const navigate = useNavigate();
     const [openPopover, setOpenPopover] = useState(null);
     const { toggleChat, isOpen: isChatOpen } = useChat();
@@ -321,7 +321,7 @@ export default function Header() {
                 </div>
                 <span className="hidden md:block text-2xl font-bold text-blue-600 tracking-tight">Học Vui</span>
             </div>
-            {user && (
+            {'admin' === role && (
                 <nav className="hidden md:flex items-center gap-1">
                     {navItems.map((item) => {
                         // Kiểm tra xem tab hiện tại có đang active không
