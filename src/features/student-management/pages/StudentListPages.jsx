@@ -30,8 +30,9 @@ export default function StudentListPages() {
                 params: {
                     page,
                     size,
-                    studentName: search || undefined,
-                    gradeLevel: gradeLevel || undefined,
+                    studentName: search,
+                    gradeLevel: gradeLevel,
+                    role: 'student',
                 },
             });
 
