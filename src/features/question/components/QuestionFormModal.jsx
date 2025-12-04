@@ -1,25 +1,35 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, Checkbox, Button, message, Row, Col, Select } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Modal, Form, Input, Checkbox, Button, Row, Col, Upload, message } from "antd";
+import { PlusOutlined, UploadOutlined, FileImageOutlined } from "@ant-design/icons";
 import questionApi from "../api/questionApi.js";
-import {toast} from "react-toastify";
+import { toast } from "react-toastify";
 
 const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tests, refreshTags }) => {
     const [form] = Form.useForm();
     const [newTagName, setNewTagName] = useState("");
     const [creatingTag, setCreatingTag] = useState(false);
 
+    // State quản lý file ảnh
+    const [fileList, setFileList] = useState([]);
+    const [previewImage, setPreviewImage] = useState(null);
+
     // Reset form hoặc điền dữ liệu khi mở modal
     useEffect(() => {
         if (open) {
+            setFileList([]); // Reset ảnh khi mở lại
+            setPreviewImage(null);
+
             if (initialValues) {
                 form.setFieldsValue({
                     ...initialValues,
                     tags: initialValues.tags || [],
-                    // Antd Select Multiple tự động hiểu mảng ID này
                     testIds: initialValues.testIds || [],
                     options: initialValues.options || ["", "", "", ""]
                 });
+                // Nếu có ảnh cũ (URL) thì hiển thị (nếu API trả về field image)
+                if (initialValues.image) {
+                    setPreviewImage(initialValues.image);
+                }
             } else {
                 form.resetFields();
             }
@@ -27,6 +37,35 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
         }
     }, [open, initialValues, form]);
 
+    // --- Xử lý dán ảnh (Ctrl + V) ---
+    useEffect(() => {
+        const handlePaste = (event) => {
+            if (!open) return;
+            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file' && item.type.includes('image/')) {
+                    const blob = item.getAsFile();
+                    const fileObj = {
+                        uid: '-1',
+                        name: 'pasted_image.png',
+                        status: 'done',
+                        originFileObj: blob,
+                    };
+                    setFileList([fileObj]);
+                    message.success("Đã dán ảnh từ Clipboard!");
+                }
+            }
+        };
+
+        // Lắng nghe sự kiện paste trên toàn bộ cửa sổ khi modal mở
+        window.addEventListener('paste', handlePaste);
+        return () => {
+            window.removeEventListener('paste', handlePaste);
+        };
+    }, [open]);
+
+    // --- API tạo Tag nhanh ---
     const handleCreateNewTag = async (tagName) => {
         if (!tagName.trim()) return;
         try {
@@ -49,6 +88,7 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
         }
     }
 
+    // --- Xử lý Submit ---
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
@@ -64,11 +104,34 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
                 }
             }
 
-            // Trả data về component cha xử lý
-            onSuccess({ ...values, tags: finalTags });
+            // Chuẩn bị dữ liệu trả về cho Parent Component
+            // Kèm theo file ảnh (nếu có)
+            const submitData = {
+                ...values,
+                tags: finalTags,
+                imageFile: fileList.length > 0 ? fileList[0].originFileObj : null
+            };
+
+            onSuccess(submitData);
         } catch (error) {
             // Validate failed
         }
+    };
+
+    // Props cho Upload component
+    const uploadProps = {
+        onRemove: () => {
+            setFileList([]);
+            setPreviewImage(null);
+        },
+        beforeUpload: (file) => {
+            // Chặn auto upload, chỉ lưu vào state để submit sau
+            setFileList([{ uid: file.uid, name: file.name, status: 'done', originFileObj: file }]);
+            return false;
+        },
+        fileList,
+        maxCount: 1,
+        accept: "image/*"
     };
 
     return (
@@ -88,29 +151,32 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
                         <Form.Item label="Nội dung câu hỏi" name="content" rules={[{ required: true, message: "Nhập câu hỏi" }]}>
                             <Input.TextArea rows={3} placeholder="Nhập nội dung câu hỏi..." className="rounded-lg" />
                         </Form.Item>
+
+                        {/* --- Khu vực Upload Ảnh --- */}
+                        <Form.Item label="Hình ảnh minh họa (Chọn file hoặc Ctrl+V để dán)">
+                            <Upload {...uploadProps} listType="picture-card">
+                                {fileList.length < 1 && (
+                                    <div>
+                                        <PlusOutlined />
+                                        <div style={{ marginTop: 8 }}>Upload</div>
+                                    </div>
+                                )}
+                            </Upload>
+                            {/* Hiển thị ảnh cũ nếu đang edit và chưa chọn ảnh mới */}
+                            {initialValues && initialValues.image && fileList.length === 0 && (
+                                <div className="mt-2 text-gray-500 text-xs flex items-center gap-2">
+                                    <FileImageOutlined /> Ảnh hiện tại:
+                                    <a href={initialValues.image} target="_blank" rel="noreferrer" className="text-blue-600">Xem ảnh cũ</a>
+                                </div>
+                            )}
+                        </Form.Item>
                     </Col>
+
                     <Col span={8}>
                         <Form.Item label="Khối lớp" name="gradeLevel" rules={[{ required: true }]}>
                             <Input placeholder="VD: 1, 2, 3..." className="rounded-lg"/>
                         </Form.Item>
-
-                        {/* UPDATE: SELECT MULTIPLE CHO BÀI THI */}
-                        {/*<Form.Item*/}
-                        {/*    label="Thuộc bài thi (Chọn nhiều)"*/}
-                        {/*    name="testIds"*/}
-                        {/*    tooltip="Tìm kiếm và chọn các đề thi chứa câu hỏi này"*/}
-                        {/*>*/}
-                        {/*    <Select*/}
-                        {/*        mode="multiple" // Cho phép chọn nhiều*/}
-                        {/*        allowClear*/}
-                        {/*        placeholder="Chọn các bài thi..."*/}
-                        {/*        options={(tests || []).map(t => ({ label: t.title, value: t._id }))}*/}
-                        {/*        maxTagCount="responsive"*/}
-                        {/*        filterOption={(input, option) =>*/}
-                        {/*            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())*/}
-                        {/*        }*/}
-                        {/*    />*/}
-                        {/*</Form.Item>*/}
+                        {/* Vị trí Select Multiple Test (đã comment trong code cũ) */}
                     </Col>
                 </Row>
 
@@ -133,7 +199,7 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label="Thuộc nhóm câu hỏi nào (Thêm mới hoặc chọn bên dưới)">
+                        <Form.Item label="Thuộc nhóm câu hỏi nào">
                             <div className="flex gap-2 mb-2">
                                 <Input
                                     placeholder="Tên tag mới..."

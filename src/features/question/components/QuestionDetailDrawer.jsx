@@ -1,5 +1,5 @@
 import React from "react";
-import { Drawer, Tag, Divider, Typography, Button } from "antd";
+import {Drawer, Tag, Divider, Typography, Button, Image} from "antd";
 import { CheckCircleOutlined, BookOutlined, EditOutlined, FileTextOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -42,9 +42,22 @@ const QuestionDetailDrawer = ({ open, onClose, question, tags, tests, onEdit }) 
                     <Title level={4} className="text-slate-800 mt-2">
                         {question.content}
                     </Title>
+                    { question.imageUrl && (
+                        <div className="bg-slate-50 rounded-lg border border-slate-100">
+                            <Image
+                                src={question.imageUrl}
+                                alt={question.imageUrl}
+                                style={{ maxHeight: '250px', objectFit: 'contain' }}
+                                className="rounded-lg"
+                                placeholder={
+                                    <div className="flex items-center justify-center h-full bg-slate-200">
+                                        Loading...
+                                    </div>
+                                }
+                            />
+                        </div>
+                    )}
                 </div>
-
-                <Divider className="my-0" />
 
                 {/* Options */}
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">

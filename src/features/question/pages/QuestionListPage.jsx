@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button, Card, message, Input } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import instance from "../../../shared/lib/axios.config";
+import instance from "../../../shared/lib/axios.config"; // Đảm bảo đường dẫn đúng
 
 // Import components
 import QuestionTable from "../components/QuestionTable";
@@ -14,10 +14,10 @@ export default function QuestionListPage() {
     // --- Data State ---
     const [questions, setQuestions] = useState([]);
     const [tags, setTags] = useState([]);
-    const [tests, setTests] = useState([]); // Vẫn cần fetch để dùng trong Modal tạo/sửa
+    const [tests, setTests] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // --- Pagination State (MỚI) ---
+    // --- Pagination State ---
     const [pagination, setPagination] = useState({
         current: 1,
         pageSize: 10,
@@ -30,7 +30,7 @@ export default function QuestionListPage() {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [viewingQuestion, setViewingQuestion] = useState(null);
 
-    // --- 1. Fetch Metadata (Tags, Tests) - Chỉ chạy 1 lần khi load trang ---
+    // --- 1. Fetch Metadata (Tags, Tests) ---
     useEffect(() => {
         const fetchMetadata = async () => {
             try {
@@ -51,18 +51,16 @@ export default function QuestionListPage() {
         };
 
         fetchMetadata();
-        // Gọi dữ liệu trang 1 ngay khi vào
         fetchQuestions(1, 10);
     }, []);
 
-    // --- 2. Fetch Questions (Gọi khi chuyển trang hoặc reload) ---
+    // --- 2. Fetch Questions ---
     const fetchQuestions = async (page = 1, pageSize = 10) => {
         setLoading(true);
         try {
-            const res = await  questionApi.getAll({ page, pageSize });
+            const res = await questionApi.getAll({ page, pageSize });
             if (res.data.success) {
                 setQuestions(res.data.data || []);
-                // Cập nhật state phân trang dựa trên total từ server trả về
                 setPagination({
                     current: page,
                     pageSize: pageSize,
@@ -77,7 +75,6 @@ export default function QuestionListPage() {
         }
     };
 
-    // Hàm refresh Tags (truyền cho Modal dùng khi tạo tag nhanh)
     const fetchTags = async () => {
         try {
             const res = await instance.get("/tag");
@@ -101,7 +98,6 @@ export default function QuestionListPage() {
         try {
             await instance.delete(`/questions/${id}`);
             message.success("Đã xóa câu hỏi");
-            // Reload lại trang hiện tại
             fetchQuestions(pagination.current, pagination.pageSize);
         } catch (err) {
             message.error("Xóa thất bại");
@@ -113,27 +109,51 @@ export default function QuestionListPage() {
         setDrawerOpen(true);
     };
 
-    // Xử lý sự kiện khi người dùng bấm trang số 2, 3... ở Table
     const handleTableChange = (newPagination) => {
         fetchQuestions(newPagination.current, newPagination.pageSize);
     };
 
-    // Logic Submit Form (Create/Update)
+    // --- LOGIC GỬI FORM VỚI FILE UPLOAD ---
     const handleFormSuccess = async (values) => {
         try {
-            if (values.type === undefined) {
-                values.type = "SINGLE_CHOICE";
+            // Tạo FormData để hỗ trợ upload file
+            const formData = new FormData();
+
+            // Append các trường text cơ bản
+            formData.append('content', values.content);
+            formData.append('gradeLevel', values.gradeLevel);
+            formData.append('answer', values.answer);
+            formData.append('solution', values.solution);
+            formData.append('type', values.type || "SINGLE_CHOICE");
+
+            // Append mảng Options (Lưu ý: tùy backend, thường gửi lặp key hoặc stringify)
+            // Cách 1: Gửi lặp key (thường dùng cho multer)
+            if (values.options && Array.isArray(values.options)) {
+                values.options.forEach(opt => formData.append('options', opt));
             }
+
+            // Append mảng Tags
+            if (values.tags && Array.isArray(values.tags)) {
+                values.tags.forEach(tagId => formData.append('tags', tagId));
+            }
+
+            // Append File ảnh (quan trọng: key "file" phải khớp với upload.single("file") ở server)
+            if (values.imageFile) {
+                formData.append('file', values.imageFile);
+            }
+
+            // Gọi API
             if (editingQuestion) {
-                await questionApi.update(editingQuestion._id, values);
+                // UPDATE: Lưu ý api update cũng phải hỗ trợ formData nếu muốn sửa ảnh
+                await questionApi.update(editingQuestion._id, formData);
                 toast.success("Cập nhật câu hỏi thành công");
             } else {
-                await questionApi.create(values);
+                // CREATE
+                await questionApi.create(formData);
                 toast.success("Tạo câu hỏi thành công");
             }
 
             setModalOpen(false);
-            // Reload lại trang hiện tại để thấy thay đổi
             fetchQuestions(pagination.current, pagination.pageSize);
         } catch (err) {
             console.error(err);
@@ -164,8 +184,8 @@ export default function QuestionListPage() {
                         questions={questions}
                         loading={loading}
                         tags={tags}
-                        pagination={pagination}      // <-- Truyền state phân trang
-                        onChange={handleTableChange} // <-- Truyền hàm xử lý đổi trang
+                        pagination={pagination}
+                        onChange={handleTableChange}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onView={handleView}

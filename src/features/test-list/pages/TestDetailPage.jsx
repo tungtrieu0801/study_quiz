@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import instance from "../../../shared/lib/axios.config";
-import { message, Button, Tag, Skeleton, Empty, Spin, Result, Modal } from "antd";
+import { message, Button, Tag, Skeleton, Empty, Spin, Result, Modal, Image } from "antd"; // Đã thêm Image
 import {
     ClockCircleOutlined,
     CheckCircleOutlined,
@@ -351,9 +351,35 @@ export default function TestDetailPage() {
                                     >
                                         <div className="flex gap-4 mb-4">
                                             <span className={`flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-lg transition-colors ${isReviewing ? (resultData?.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700') : 'bg-blue-100 text-blue-600'}`}>{idx + 1}</span>
-                                            <div className="pt-1 w-full"><h3 className="text-base md:text-lg font-semibold text-slate-800 leading-relaxed">{q.content}</h3></div>
+
+                                            {/* Container chứa Text và Image */}
+                                            <div className="pt-1 w-full">
+                                                <h3 className="text-base md:text-lg font-semibold text-slate-800 leading-relaxed mb-3">
+                                                    {q.content}
+                                                </h3>
+
+                                                {/* --- HIỂN THỊ ẢNH CÂU HỎI (Mới thêm) --- */}
+                                                {q.imageUrl && (
+                                                    <div className="w-full my-4 flex justify-center">
+                                                        <Image
+                                                            src={q.imageUrl}
+                                                            alt={`Question ${idx + 1} image`}
+                                                            className="rounded-lg border border-slate-100 object-contain"
+                                                            style={{ maxHeight: "350px", maxWidth: "100%" }}
+                                                            placeholder={
+                                                                <div className="flex items-center justify-center h-40 bg-slate-100 text-slate-400 rounded-lg">
+                                                                    <Spin />
+                                                                </div>
+                                                            }
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="grid gap-3 ml-0 md:ml-14">
+                                            <div className="text-start text-sm md:text-base font-medium text-slate-600 mb-1">
+                                                Chọn đáp án dưới đây
+                                            </div>
                                             {q.options.map((opt) => {
                                                 const isSelected = userAnswer === opt;
                                                 let containerClass = "border-slate-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
@@ -372,7 +398,6 @@ export default function TestDetailPage() {
                                                         else { containerClass = "border-slate-100 opacity-50"; }
                                                     } else {
                                                         // Trường hợp CHƯA LÀM (resultData undefined)
-                                                        // Không biết đáp án đúng (do BE không trả về), chỉ làm mờ mọi thứ
                                                         containerClass = "border-slate-100 opacity-50";
                                                     }
                                                 }
