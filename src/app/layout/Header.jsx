@@ -14,7 +14,6 @@ import { Moon, Sun } from "lucide-react";
 import { useChat } from "../providers/ChatProvider.jsx";
 import instance from "../../shared/lib/axios.config.js";
 
-// --- COMPONENT CIRCLE BUTTON ---
 const CircleButton = ({ icon, onClick, active, count, badgeStyle }) => (
     <div
         onClick={onClick}
@@ -315,13 +314,13 @@ export default function Header() {
             {/* LOGO */}
             {/*contextholder controler model*/}
             {contextHolder}
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate(user?.role === "admin" ? "/menu" : "/")}>
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate(user?.role === "teacher" ? "/menu" : "/")}>
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-sm">
                     H
                 </div>
                 <span className="hidden md:block text-2xl font-bold text-blue-600 tracking-tight">Học Vui</span>
             </div>
-            {'admin' === role && (
+            {'teacher' === role && (
                 <nav className="hidden md:flex items-center gap-1">
                     {navItems.map((item) => {
                         // Kiểm tra xem tab hiện tại có đang active không

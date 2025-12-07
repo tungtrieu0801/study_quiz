@@ -27,7 +27,7 @@ const RoleRedirect = () => {
 
     if (!user) return <Navigate to="/login" replace />;
 
-    if (user.role === "admin") {
+    if (user.role === "teacher") {
         return <Navigate to="/menu" replace />;
     }
 
@@ -56,7 +56,7 @@ const router = createBrowserRouter([
                 element: <PrivateRoute element={<TestDetailPage />} />,
             },
             {
-                path: "admin/test/:testId",
+                path: "teacher/test/:testId",
                 element: <PrivateRoute element={<TestManagementPage />} />,
             },
             {

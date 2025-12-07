@@ -114,6 +114,7 @@ export default function MenuPage() {
     };
 
     const handleCreateTest = (values) => {
+        console.log("craete test")
         createTest(values, () => {
             message.success("Tạo bài kiểm tra thành công!");
             handleCancelModal();

@@ -10,6 +10,7 @@ import {
 } from "@ant-design/icons";
 import instance from "../../../../../shared/lib/axios.config";
 import { toast } from "react-toastify";
+import useAuth from "../../../../../app/hooks/useAuth.js";
 
 export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel }) {
     const [loading, setLoading] = useState(false);
@@ -21,6 +22,7 @@ export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel
     // State thống kê số lượng
     const [totalStudents, setTotalStudents] = useState(0);
     const [submittedCount, setSubmittedCount] = useState(0);
+    const { user, role, logout } = useAuth();
 
     const fetchData = async () => {
         setLoading(true);
@@ -36,11 +38,16 @@ export default function UnsubmittedStudentsWidget({ testName, testId, gradeLevel
             const submittedIds = leaderboard.map(item => item.user._id);
             setSubmittedCount(submittedIds.length);
 
-            // 2. Lấy danh sách tất cả học sinh
-            const studentParams = { page: 0, size: 1000 };
             // if (gradeLevel) studentParams.gradeLevel = gradeLevel;
 
-            const studentRes = await instance.get("/user", { params: studentParams });
+            const studentRes = await instance.get("/user", {
+                params: {
+                    role: 'student',
+                    page: 0,
+                    size: 1000,
+                    teacherId: user.id,
+                }
+            });
             const allStudents = studentRes.data.data.students || [];
             setTotalStudents(allStudents.length);
 

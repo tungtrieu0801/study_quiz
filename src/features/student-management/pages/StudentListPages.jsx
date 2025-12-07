@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Table, Input, Select, Modal, Spin, Card, Button, Form, message } from "antd";
 import { EditOutlined } from "@ant-design/icons"; // Import icon sửa
 import instance from "../../../shared/lib/axios.config";
+import useAuth from "../../../app/hooks/useAuth.js";
 
 export default function StudentListPages() {
     const [students, setStudents] = useState([]);
@@ -21,7 +22,8 @@ export default function StudentListPages() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
     const [updateLoading, setUpdateLoading] = useState(false);
-    const [form] = Form.useForm(); // Hook của Antd Form
+    const [form] = Form.useForm(); // Hook của Antd
+    const { user, role, logout } = useAuth();
 
     const fetchStudents = async () => {
         setLoading(true);
@@ -33,6 +35,7 @@ export default function StudentListPages() {
                     studentName: search,
                     gradeLevel: gradeLevel,
                     role: 'student',
+                    teacherId: user.id
                 },
             });
 

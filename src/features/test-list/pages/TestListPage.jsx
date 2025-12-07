@@ -30,7 +30,7 @@ export default function TestListPage() {
     const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
     const [selectedTestTitle, setSelectedTestTitle] = useState("");
 
-    const { user, isAdmin } = useAuth();
+    const { user, isTeacher } = useAuth();
     const navigate = useNavigate();
     const { createTest, creating } = useTestManagement();
 
@@ -50,8 +50,8 @@ export default function TestListPage() {
     };
 
     const handleClickTest = (test) => {
-        if (isAdmin) {
-            navigate(`/admin/test/${test._id}`);
+        if (isTeacher) {
+            navigate(`/teacher/test/${test._id}`);
         } else {
             test.isTaken ? handleViewLeaderboard(test._id, test.title) : navigate(`/test/${test._id}`);
         }
@@ -75,7 +75,7 @@ export default function TestListPage() {
         });
     };
 
-    const visibleTests = isAdmin || isExpanded ? tests : tests.slice(0, 6);
+    const visibleTests = isTeacher || isExpanded ? tests : tests.slice(0, 6);
 
     return (
         <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans">
@@ -88,10 +88,10 @@ export default function TestListPage() {
                         </div>
                         <div>
                             <h1 className="text-3xl font-bold text-slate-800">Kho đề thi</h1>
-                            <p className="text-slate-500">{isAdmin ? "Quản lý ngân hàng đề thi" : "Học tập và kiểm tra trực tuyến"}</p>
+                            <p className="text-slate-500">{isTeacher ? "Quản lý ngân hàng đề thi" : "Học tập và kiểm tra trực tuyến"}</p>
                         </div>
                     </div>
-                    {isAdmin && (
+                    {isTeacher && (
                         <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => setIsCreateModalOpen(true)} className="bg-blue-600 rounded-xl shadow-lg">
                             Tạo đề thi mới
                         </Button>
@@ -99,7 +99,7 @@ export default function TestListPage() {
                 </div>
 
                 {/* STUDENT DASHBOARD */}
-                {!isAdmin && !loading && (
+                {!isTeacher && !loading && (
                     <StudentDashboard tests={tests} onViewLeaderboard={handleViewLeaderboard} />
                 )}
 
@@ -116,13 +116,13 @@ export default function TestListPage() {
                             <AnimatePresence>
                                 {visibleTests.map((test) => (
                                     <motion.div key={test._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} layout>
-                                        <TestCard test={test} isAdmin={isAdmin} onClick={() => handleClickTest(test)} />
+                                        <TestCard test={test} isTeacher={isTeacher} onClick={() => handleClickTest(test)} />
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
                         </motion.div>
 
-                        {!isAdmin && tests.length > 6 && (
+                        {!isTeacher && tests.length > 6 && (
                             <div className="flex justify-center mt-10">
                                 <Button type="text" icon={isExpanded ? <UpOutlined /> : <DownOutlined />} onClick={() => setIsExpanded(!isExpanded)} className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 px-6 py-2 h-auto rounded-full font-medium transition-all">
                                     {isExpanded ? "Thu gọn danh sách" : `Xem thêm ${tests.length - 6} bài kiểm tra khác`}

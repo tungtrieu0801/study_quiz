@@ -52,7 +52,7 @@ export default function TestManagementPage() {
 
     // --- FETCH DATA ---
     useEffect(() => {
-        if (user && user.role?.toLowerCase() !== "admin") {
+        if (user && user.role?.toLowerCase() !== "teacher") {
             message.warning("Bạn không có quyền truy cập trang này!");
             navigate("/");
             return;

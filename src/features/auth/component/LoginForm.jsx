@@ -19,7 +19,7 @@ export default function LoginForm() {
                 await login(res.data.data);
 
                 toast.success("🎉 Đăng nhập thành công!");
-                if ("admin" === res.data.data.user.role) {
+                if ("teacher" === res.data.data.user.role) {
                     navigate("/menu");
                 } else {
                     navigate("/tests");

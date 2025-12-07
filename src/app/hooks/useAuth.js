@@ -14,14 +14,14 @@ export default function useAuth() {
     const rawRole = user?.role || user?.data?.role || "guest";
     const role = String(rawRole).toLowerCase();
 
-    // 3. Tạo biến isAdmin
-    const isAdmin = role === "admin";
+    // 3. Tạo biến isTeacher
+    const isTeacher = role === "teacher";
 
     // 4. Trả về object đã tính toán
     return {
         user,
         role,
-        isAdmin,
+        isTeacher,
         isInitialized,
         login,
         logout

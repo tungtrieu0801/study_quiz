@@ -6,7 +6,7 @@ import {toast} from "react-toastify";
 
 const useTestManagement = () => {
     const [creating, setCreating] = useState(false);
-    const { isAdmin } = useAuth();
+    const { isTeacher } = useAuth();
     /**
      * Create test for student
      * @param values - data form input
@@ -14,7 +14,7 @@ const useTestManagement = () => {
      * @returns {Promise<void>}
      */
     const createTest = async (values, onSuccess) => {
-        if (!isAdmin) {
+        if (!isTeacher) {
             message.error("Bạn không có quyền thực hiện thao tác này");
             return;
         }
