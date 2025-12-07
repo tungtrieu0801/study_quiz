@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Button, Avatar, Tag } from "antd";
+import {Modal, Button, Avatar, Tag, Image} from "antd";
 import { UserOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 
 export default function ReviewSubmissionModal({ open, onCancel, loading, data }) {
@@ -46,7 +46,15 @@ export default function ReviewSubmissionModal({ open, onCancel, loading, data })
                                     <h4 className="font-bold text-slate-700 text-base">Câu {index + 1}: <span className="font-normal">{q.content}</span></h4>
                                     {isCorrect ? <Tag color="success" icon={<CheckCircleOutlined />}>Đúng</Tag> : <Tag color="error" icon={<CloseCircleOutlined />}>Sai</Tag>}
                                 </div>
-
+                                {q.imageUrl && (
+                                    <div className="mb-4">
+                                        <Image
+                                            className="bg-slate-50 rounded-lg border border-slate-100"
+                                            src={q.imageUrl}
+                                            height={300}
+                                        />
+                                    </div>
+                                )}
                                 {q.options && q.options.length > 0 && (
                                     <div className="ml-4 mb-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                                         {q.options.map((opt, i) => {
