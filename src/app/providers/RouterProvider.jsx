@@ -11,6 +11,7 @@ import TagListPage from "../../features/tags/pages/TagListPage.jsx";
 import QuestionListPage from "../../features/question/pages/QuestionListPage.jsx";
 import TestManagementPage from "../../features/test-list/pages/admin/TestManagementPage.jsx";
 import TestDetailPage from "../../features/test-list/pages/TestDetailPage.jsx";
+import AuthorAndSupportPage from "../../features/admin-management/pages/AuthorAndSupportPage.jsx";
 
 // PrivateRoute
 const PrivateRoute = ({ element }) => {
@@ -74,6 +75,10 @@ const router = createBrowserRouter([
             {
                 path: "questions",
                 element: <PrivateRoute element={<QuestionListPage />} />,
+            },
+            {
+                path: "author-and-support",
+                element: <PrivateRoute element={<AuthorAndSupportPage />} />,
             }
         ],
     },

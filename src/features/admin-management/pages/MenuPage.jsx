@@ -63,10 +63,10 @@ export default function MenuPage() {
             bg: "bg-orange-50",
         },
         {
-            label: "Thêm câu hỏi mới",
+            label: "Tác giả & Ủng hộ",
             desc: "Soạn thảo câu hỏi",
             icon: <PlusCircleOutlined/>,
-            action: "add-question",
+            action: "author-and-support",
             color: "text-rose-600",
             bg: "bg-rose-50",
         },
@@ -89,8 +89,8 @@ export default function MenuPage() {
             case "add-test": // Giả sử bạn có route này
                 setIsModalOpen(true);
                 break;
-            case "add-question": // Giả sử bạn có route này
-                navigate("/add-question");
+            case "author-and-support": // Giả sử bạn có route này
+                navigate("/author-and-support");
                 break;
             default:
                 console.log("Action not found:", action);
