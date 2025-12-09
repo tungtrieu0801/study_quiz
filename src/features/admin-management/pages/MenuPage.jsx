@@ -1,215 +1,285 @@
-import React, {useState} from "react";
-import {Button, Card, Form, Input, InputNumber, Modal, Select, message} from "antd";
+import React, { useState } from "react";
 import {
-    PlusCircleOutlined,
+    Button,
+    Form,
+    Input,
+    InputNumber,
+    Modal,
+    Select,
+    message,
+    Tooltip,
+    Avatar
+} from "antd";
+import {
     UnorderedListOutlined,
     TagsOutlined,
     TeamOutlined,
     RightOutlined,
+    PlusCircleOutlined,
+    ThunderboltFilled,
+    RobotOutlined,
+    CrownFilled,
+    ExperimentOutlined,
+    GithubOutlined,
+    MailOutlined,
+    InfoCircleFilled,
+    StarFilled
 } from "@ant-design/icons";
-import {motion} from "framer-motion";
-import {useNavigate} from "react-router-dom";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import useTestManagement from "../../../app/hooks/useTestManagement.js";
+
+// Custom CSS cho hiệu ứng Glass và Gradient động
+const styles = `
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  }
+  .hover-lift {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  }
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+    transform: skewX(-20deg) translateX(-150%);
+    animation: shimmer 3s infinite;
+  }
+  @keyframes shimmer {
+    0% { transform: skewX(-20deg) translateX(-150%); }
+    20% { transform: skewX(-20deg) translateX(150%); }
+    100% { transform: skewX(-20deg) translateX(150%); }
+  }
+`;
 
 export default function MenuPage() {
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
-    const {createTest, creating} = useTestManagement();
-    const handleCancelModal = () => {
-        setIsModalOpen(false);
-        form.resetFields();
-    };
-    // Thêm màu sắc và mô tả để giao diện sinh động hơn
-    const items = [
-        {
-            label: "Quản lí danh sách bài kiểm tra",
-            desc: "Quản lý kho đề thi",
-            icon: <UnorderedListOutlined/>,
-            action: "tests",
-            color: "text-blue-600",
-            bg: "bg-blue-50",
-        },
-        {
-            label: "Quản lí danh sách câu hỏi",
-            desc: "Ngân hàng câu hỏi",
-            icon: <UnorderedListOutlined/>,
-            action: "question-list",
-            color: "text-indigo-600",
-            bg: "bg-indigo-50",
-        },
-        {
-            label: "Quản lí nhóm câu hỏi",
-            desc: "Phân loại chủ đề",
-            icon: <TagsOutlined/>,
-            action: "tag-list",
-            color: "text-purple-600",
-            bg: "bg-purple-50",
-        },
-        {
-            label: "Quản lí học sinh",
-            desc: "Thông tin học viên",
-            icon: <TeamOutlined/>,
-            action: "student-list",
-            color: "text-emerald-600",
-            bg: "bg-emerald-50",
-        },
-        {
-            label: "Thêm bài kiểm tra mới",
-            desc: "Tạo đề thi mới",
-            icon: <PlusCircleOutlined/>,
-            action: "add-test",
-            color: "text-orange-600",
-            bg: "bg-orange-50",
-        },
-        {
-            label: "Tác giả & Ủng hộ",
-            desc: "Soạn thảo câu hỏi",
-            icon: <PlusCircleOutlined/>,
-            action: "author-and-support",
-            color: "text-rose-600",
-            bg: "bg-rose-50",
-        },
-    ];
-
-    const handleClick = (action) => {
-        switch (action) {
-            case "tests":
-                navigate("/tests");
-                break;
-            case "student-list":
-                navigate("/students");
-                break;
-            case "tag-list":
-                navigate("/tags");
-                break; // Đã sửa lỗi thiếu break
-            case "question-list":
-                navigate("/questions");
-                break; // Đã sửa lỗi thiếu break
-            case "add-test": // Giả sử bạn có route này
-                setIsModalOpen(true);
-                break;
-            case "author-and-support": // Giả sử bạn có route này
-                navigate("/author-and-support");
-                break;
-            default:
-                console.log("Action not found:", action);
-        }
-    };
-
-    // Animation variants
-    const containerVariants = {
-        hidden: {opacity: 0},
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-            },
-        },
-    };
-
-    const itemVariants = {
-        hidden: {opacity: 0, y: 30},
-        visible: {opacity: 1, y: 0, transition: {type: "spring", stiffness: 50}},
-    };
+    const { createTest, creating } = useTestManagement();
 
     const handleCreateTest = (values) => {
-        console.log("craete test")
         createTest(values, () => {
             message.success("Tạo bài kiểm tra thành công!");
-            handleCancelModal();
-        })
-    }
+            setIsModalOpen(false);
+            form.resetFields();
+        });
+    };
 
+    const handleClick = (action) => {
+        if (action === 'add-test') setIsModalOpen(true);
+        else if (action === 'ai-create') message.loading("Đang kết nối AI Server...");
+        else navigate(`/${action}`);
+    };
+
+    const modules = [
+        { title: "KHO ĐỀ THI", subtitle: "Lưu trữ & Thống kê", icon: <ExperimentOutlined />, action: "tests", color: "text-blue-600", bg: "bg-blue-50" },
+        { title: "NGÂN HÀNG CÂU HỎI", subtitle: "Thêm mới thủ công câu hỏi", icon: <UnorderedListOutlined />, action: "questions", color: "text-indigo-600", bg: "bg-indigo-50" },
+        { title: "TAGS & CHỦ ĐỀ", subtitle: "Hệ thống phân loại", icon: <TagsOutlined />, action: "tags", color: "text-rose-600", bg: "bg-rose-50" },
+        { title: "HỌC VIÊN", subtitle: "Dữ liệu & Kết quả", icon: <TeamOutlined />, action: "students", color: "text-emerald-600", bg: "bg-emerald-50" },
+        { title: "TẠO THỦ CÔNG", subtitle: "Soạn đề truyền thống", icon: <PlusCircleOutlined />, action: "add-test", color: "text-amber-600", bg: "bg-amber-50" },
+    ];
 
     return (
-        <div
-            className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 p-6 md:p-12 font-sans flex mt-5 justify-center">
-            <div className="max-w-7xl w-full">
-                {/* Header Section */}
-                <div className="mb-12 text-center">
-                    <motion.div
-                        initial={{opacity: 0, scale: 0.8}}
-                        animate={{opacity: 1, scale: 1}}
-                        transition={{duration: 0.5}}
-                    >
-                        <h1 className="text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight mb-2">
-                            Menu Quản Lý
+        <div className="min-h-screen bg-[#F3F4F6] font-sans text-slate-800 p-6 md:p-10 flex flex-col items-center">
+            <style>{styles}</style>
+
+            <div className="w-full max-w-7xl">
+                {/* HEADER: Gọn gàng và Chuyên nghiệp */}
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                            Dashboard
                         </h1>
-                        <p className="text-slate-500 text-lg">
-                            Hệ thống quản trị nội dung và đào tạo
+                        <p className="text-slate-500 text-sm mt-1">Chào mừng quay trở lại, Administrator.</p>
+                    </div>
+                    <div className="hidden md:flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="text-xs font-semibold text-slate-600">System Stable</span>
+                    </div>
+                </div>
+
+                {/* --- ROW 1: HERO SECTION (AI & AUTHOR) --- */}
+                <div className="grid grid-cols-12 gap-6 mb-8 h-auto md:h-[200px]">
+
+                    {/* 1. AI MODULE (Span 8/12) */}
+                    <motion.div
+                        whileHover={{ scale: 1.005 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => handleClick("ai-create")}
+                        className="col-span-12 lg:col-span-8 relative rounded-3xl overflow-hidden cursor-pointer group shadow-xl shadow-indigo-200/50 border border-indigo-100 shimmer"
+                    >
+                        {/* Dynamic Gradient Background */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4338ca]"></div>
+                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
+
+                        {/* Decorative Blobs */}
+                        <div className="absolute top-[-50%] right-[-10%] w-80 h-80 bg-purple-500 rounded-full blur-[80px] opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
+                        <div className="absolute bottom-[-50%] left-[-10%] w-80 h-80 bg-blue-500 rounded-full blur-[80px] opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
+
+                        <div className="relative z-10 h-full flex flex-col md:flex-row items-center justify-between p-8 md:p-10">
+                            <div className="flex items-center gap-6 md:gap-8">
+                                {/* Icon Container */}
+                                <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner group-hover:scale-110 transition-transform duration-300">
+                                    <RobotOutlined className="text-5xl text-indigo-100" />
+                                </div>
+
+                                {/* Text Content */}
+                                <div className="text-center md:text-left">
+                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-gradient-to-r from-amber-400 to-orange-500 text-[10px] font-bold text-white uppercase tracking-wider mb-2 shadow-sm">
+                                        <ThunderboltFilled /> Recommended
+                                    </div>
+                                    <h2 className="text-3xl font-bold text-white mb-1 leading-tight">
+                                        Tạo Đề Thi Với AI
+                                    </h2>
+                                    <p className="text-indigo-200 text-sm font-medium">
+                                        Tự động sinh câu hỏi & đáp án chính xác trong 30s.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Action Arrow */}
+                            <div className="mt-6 md:mt-0">
+                                <div className="w-12 h-12 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow-lg group-hover:bg-indigo-50 transition-colors">
+                                    <RightOutlined className="text-lg" />
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* 2. AUTHOR MODULE (Span 4/12) */}
+                    {/* 2. AUTHOR MODULE (Span 4/12) - Đã sửa để click vào đâu cũng nhảy trang */}
+                    <motion.div
+                        whileHover={{ scale: 1.02 }} // Thêm hiệu ứng nhấn nhẹ cho cả khối
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate('/author-and-support')} // <--- Sự kiện click cho toàn bộ khối
+                        className="col-span-12 lg:col-span-4 glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between hover-lift relative overflow-hidden group cursor-pointer" // <--- Thêm cursor-pointer
+                    >
+                        {/* Decor nền */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-bl-[100px] -z-10 transition-colors group-hover:bg-rose-50"></div>
+
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                    <InfoCircleFilled /> Information
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-800 group-hover:text-rose-600 transition-colors"> {/* Thêm đổi màu chữ khi hover */}
+                                    Tác Giả & Hỗ Trợ
+                                </h3>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                <CrownFilled className="text-lg"/>
+                            </div>
+                        </div>
+
+                        <p className="text-slate-500 text-sm mt-2 line-clamp-2">
+                            Thông tin tác giả, liên hệ và hỗ trợ.
                         </p>
+
+                        {/* Các nút con bên trong (chỉ mang tính trang trí visual, click vào vẫn ăn theo khối cha) */}
+                        <div className="flex items-center gap-3 mt-4">
+                            <div className="rounded-xl bg-slate-100 text-slate-600 group-hover:bg-black group-hover:text-white transition-all h-10 w-10 flex items-center justify-center">
+                                <GithubOutlined />
+                            </div>
+                            <div className="rounded-xl bg-slate-100 text-slate-600 group-hover:bg-rose-500 group-hover:text-white transition-all h-10 w-10 flex items-center justify-center">
+                                <MailOutlined />
+                            </div>
+
+                            {/* Nút text "Chi tiết" */}
+                            <div className="ml-auto text-sm font-semibold text-slate-600 group-hover:text-rose-600 flex items-center gap-1 transition-colors">
+                                Xem CV <RightOutlined className="text-xs group-hover:translate-x-1 transition-transform"/>
+                            </div>
+                        </div>
                     </motion.div>
                 </div>
 
-                {/* Grid Section */}
-                <motion.div
-                    className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8"
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                >
-                    {items.map((item) => (
+                {/* --- ROW 2: FEATURE GRID --- */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                    {modules.map((item, index) => (
                         <motion.div
-                            key={item.label}
-                            variants={itemVariants}
-                            whileHover={{y: -5}}
-                            whileTap={{scale: 0.98}}
+                            key={index}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => handleClick(item.action)}
+                            className="glass-card rounded-2xl p-6 hover-lift cursor-pointer group flex flex-col items-start justify-between min-h-[160px]"
                         >
-                            <Card
-                                bordered={false}
-                                className="h-full rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden group bg-white/80 backdrop-blur-md border border-white/50"
-                                bodyStyle={{padding: "24px"}}
-                                onClick={() => handleClick(item.action)}
-                            >
-                                <div className="flex items-start justify-between mb-6">
-                                    {/* Icon Box */}
-                                    <div
-                                        className={`p-4 rounded-2xl ${item.bg} ${item.color} text-3xl shadow-inner group-hover:scale-110 transition-transform duration-300`}
-                                    >
-                                        {item.icon}
-                                    </div>
-
-                                    {/* Arrow Icon appearing on hover */}
-                                    <div
-                                        className="opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all duration-300 text-slate-400">
-                                        <RightOutlined/>
-                                    </div>
+                            <div className="w-full flex justify-between items-start mb-4">
+                                <div className={`w-12 h-12 rounded-xl ${item.bg} ${item.color} flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition-transform`}>
+                                    {item.icon}
                                 </div>
+                                <RightOutlined className="text-slate-300 text-xs group-hover:text-slate-600 group-hover:translate-x-1 transition-all" />
+                            </div>
 
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
-                                        {item.label}
-                                    </h3>
-                                    <p className="text-slate-400 mt-2 text-sm font-medium">
-                                        {item.desc}
-                                    </p>
-                                </div>
-                            </Card>
+                            <div>
+                                <h4 className="text-base font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">
+                                    {item.title}
+                                </h4>
+                                <p className="text-xs text-slate-500 font-medium">
+                                    {item.subtitle}
+                                </p>
+                            </div>
                         </motion.div>
                     ))}
-                </motion.div>
+                </div>
 
-                <Modal title="Tạo đề thi mới" open={isModalOpen} onCancel={handleCancelModal} footer={null} centered
-                       width={600}>
-                    <Form form={form} layout="vertical" onFinish={handleCreateTest} className="mt-4">
-                        <Form.Item label="Tên bài kiểm tra" name="title" rules={[{required: true}]}><Input size="large"
-                                                                                                           className="rounded-xl"/></Form.Item>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Form.Item label="Thời gian (phút)" name="duration" rules={[{required: true}]}><InputNumber
-                                size="large" className="w-full rounded-xl"/></Form.Item>
-                            <Form.Item label="Khối lớp" name="gradeLevel" rules={[{required: true}]}><Select
-                                size="large" className="rounded-xl">{[1, 2, 3, 4, 5].map(g => <Select.Option key={g}
-                                                                                                             value={g.toString()}>Khối {g}</Select.Option>)}</Select></Form.Item>
-                        </div>
-                        <Form.Item label="Mô tả" name="description"><Input.TextArea rows={4}
-                                                                                    className="rounded-xl"/></Form.Item>
-                        <div className="flex justify-end gap-3 pt-4"><Button
-                            onClick={handleCancelModal}>Hủy</Button><Button type="primary" htmlType="submit"
-                                                                            loading={creating}>Tạo</Button></div>
-                    </Form>
-                </Modal>
             </div>
+
+            {/* Modal Creating Test */}
+            <Modal
+                open={isModalOpen}
+                onCancel={() => setIsModalOpen(false)}
+                footer={null}
+                centered
+                width={500}
+                closeIcon={null}
+                maskClosable={false}
+                className="bg-transparent"
+            >
+                <div className="bg-white rounded-2xl overflow-hidden shadow-2xl p-0">
+                    <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <h3 className="font-bold text-slate-800">Thiết Lập Đề Thi</h3>
+                        <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full bg-transparent hover:bg-slate-100 text-slate-400 flex items-center justify-center transition-all">✕</button>
+                    </div>
+                    <div className="p-6">
+                        <Form form={form} layout="vertical" onFinish={handleCreateTest}>
+                            <Form.Item label={<span className="text-slate-600 font-medium text-xs uppercase">Tên bài kiểm tra</span>} name="title" rules={[{ required: true }]}>
+                                <Input size="large" className="rounded-xl border-slate-200 focus:border-indigo-500 hover:border-indigo-300" placeholder="Ví dụ: Kiểm tra 15 phút..." />
+                            </Form.Item>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Form.Item label={<span className="text-slate-600 font-medium text-xs uppercase">Thời gian (phút)</span>} name="duration" rules={[{ required: true }]}>
+                                    <InputNumber size="large" className="w-full rounded-xl border-slate-200" min={1} />
+                                </Form.Item>
+                                <Form.Item label={<span className="text-slate-600 font-medium text-xs uppercase">Khối lớp</span>} name="gradeLevel" rules={[{ required: true }]}>
+                                    <Select size="large" className="rounded-xl" placeholder="Chọn khối">
+                                        {[10,11,12].map(g => <Select.Option key={g} value={g.toString()}>Khối {g}</Select.Option>)}
+                                    </Select>
+                                </Form.Item>
+                            </div>
+                            <Form.Item label={<span className="text-slate-600 font-medium text-xs uppercase">Ghi chú</span>} name="description">
+                                <Input.TextArea rows={3} className="rounded-xl border-slate-200 focus:border-indigo-500" />
+                            </Form.Item>
+                            <Button type="primary" htmlType="submit" loading={creating} size="large" className="w-full h-11 rounded-xl bg-slate-900 hover:bg-indigo-600 shadow-lg font-semibold mt-2">
+                                Hoàn Tất & Tạo Mới
+                            </Button>
+                        </Form>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
