@@ -7,8 +7,7 @@ import {
     Modal,
     Select,
     message,
-    Tooltip,
-    Avatar
+    Tooltip
 } from "antd";
 import {
     UnorderedListOutlined,
@@ -23,13 +22,15 @@ import {
     GithubOutlined,
     MailOutlined,
     InfoCircleFilled,
-    StarFilled
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import useTestManagement from "../../../app/hooks/useTestManagement.js";
 
-// Custom CSS cho hiệu ứng Glass và Gradient động
+// IMPORT MODAL AI VỪA TẠO
+import AICreateModal from "../component/AICreateModal.jsx";
+
+// CSS Styles
 const styles = `
   .glass-card {
     background: rgba(255, 255, 255, 0.95);
@@ -68,27 +69,39 @@ const styles = `
 
 export default function MenuPage() {
     const navigate = useNavigate();
-    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // State quản lý 2 Modal
+    const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+
     const [form] = Form.useForm();
     const { createTest, creating } = useTestManagement();
 
-    const handleCreateTest = (values) => {
+    // Xử lý tạo thủ công
+    const handleCreateManual = (values) => {
         createTest(values, () => {
             message.success("Tạo bài kiểm tra thành công!");
-            setIsModalOpen(false);
+            setIsManualModalOpen(false);
             form.resetFields();
         });
     };
 
+    // Xử lý điều hướng
     const handleClick = (action) => {
-        if (action === 'add-test') setIsModalOpen(true);
-        else if (action === 'ai-create') message.loading("Đang kết nối AI Server...");
-        else navigate(`/${action}`);
+        if (action === 'add-test') {
+            setIsManualModalOpen(true);
+        } else if (action === 'ai-create') {
+            setIsAIModalOpen(true);
+        } else if (action === 'author-and-support') {
+            navigate('/author-and-support');
+        } else {
+            navigate(`/${action}`);
+        }
     };
 
     const modules = [
         { title: "KHO ĐỀ THI", subtitle: "Lưu trữ & Thống kê", icon: <ExperimentOutlined />, action: "tests", color: "text-blue-600", bg: "bg-blue-50" },
-        { title: "NGÂN HÀNG CÂU HỎI", subtitle: "Thêm mới thủ công câu hỏi", icon: <UnorderedListOutlined />, action: "questions", color: "text-indigo-600", bg: "bg-indigo-50" },
+        { title: "NGÂN HÀNG CÂU HỎI", subtitle: "Soạn thảo gốc", icon: <UnorderedListOutlined />, action: "questions", color: "text-indigo-600", bg: "bg-indigo-50" },
         { title: "TAGS & CHỦ ĐỀ", subtitle: "Hệ thống phân loại", icon: <TagsOutlined />, action: "tags", color: "text-rose-600", bg: "bg-rose-50" },
         { title: "HỌC VIÊN", subtitle: "Dữ liệu & Kết quả", icon: <TeamOutlined />, action: "students", color: "text-emerald-600", bg: "bg-emerald-50" },
         { title: "TẠO THỦ CÔNG", subtitle: "Soạn đề truyền thống", icon: <PlusCircleOutlined />, action: "add-test", color: "text-amber-600", bg: "bg-amber-50" },
@@ -99,7 +112,7 @@ export default function MenuPage() {
             <style>{styles}</style>
 
             <div className="w-full max-w-7xl">
-                {/* HEADER: Gọn gàng và Chuyên nghiệp */}
+                {/* HEADER */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -123,22 +136,16 @@ export default function MenuPage() {
                         onClick={() => handleClick("ai-create")}
                         className="col-span-12 lg:col-span-8 relative rounded-3xl overflow-hidden cursor-pointer group shadow-xl shadow-indigo-200/50 border border-indigo-100 shimmer"
                     >
-                        {/* Dynamic Gradient Background */}
                         <div className="absolute inset-0 bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4338ca]"></div>
                         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
-
-                        {/* Decorative Blobs */}
                         <div className="absolute top-[-50%] right-[-10%] w-80 h-80 bg-purple-500 rounded-full blur-[80px] opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
                         <div className="absolute bottom-[-50%] left-[-10%] w-80 h-80 bg-blue-500 rounded-full blur-[80px] opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
 
                         <div className="relative z-10 h-full flex flex-col md:flex-row items-center justify-between p-8 md:p-10">
                             <div className="flex items-center gap-6 md:gap-8">
-                                {/* Icon Container */}
                                 <div className="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner group-hover:scale-110 transition-transform duration-300">
                                     <RobotOutlined className="text-5xl text-indigo-100" />
                                 </div>
-
-                                {/* Text Content */}
                                 <div className="text-center md:text-left">
                                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-gradient-to-r from-amber-400 to-orange-500 text-[10px] font-bold text-white uppercase tracking-wider mb-2 shadow-sm">
                                         <ThunderboltFilled /> Recommended
@@ -151,8 +158,6 @@ export default function MenuPage() {
                                     </p>
                                 </div>
                             </div>
-
-                            {/* Action Arrow */}
                             <div className="mt-6 md:mt-0">
                                 <div className="w-12 h-12 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow-lg group-hover:bg-indigo-50 transition-colors">
                                     <RightOutlined className="text-lg" />
@@ -162,14 +167,12 @@ export default function MenuPage() {
                     </motion.div>
 
                     {/* 2. AUTHOR MODULE (Span 4/12) */}
-                    {/* 2. AUTHOR MODULE (Span 4/12) - Đã sửa để click vào đâu cũng nhảy trang */}
                     <motion.div
-                        whileHover={{ scale: 1.02 }} // Thêm hiệu ứng nhấn nhẹ cho cả khối
+                        whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => navigate('/author-and-support')} // <--- Sự kiện click cho toàn bộ khối
-                        className="col-span-12 lg:col-span-4 glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between hover-lift relative overflow-hidden group cursor-pointer" // <--- Thêm cursor-pointer
+                        onClick={() => handleClick("author-and-support")}
+                        className="col-span-12 lg:col-span-4 glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between hover-lift relative overflow-hidden group cursor-pointer"
                     >
-                        {/* Decor nền */}
                         <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-bl-[100px] -z-10 transition-colors group-hover:bg-rose-50"></div>
 
                         <div className="flex justify-between items-start">
@@ -177,7 +180,7 @@ export default function MenuPage() {
                                 <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
                                     <InfoCircleFilled /> Information
                                 </div>
-                                <h3 className="text-xl font-bold text-slate-800 group-hover:text-rose-600 transition-colors"> {/* Thêm đổi màu chữ khi hover */}
+                                <h3 className="text-xl font-bold text-slate-800 group-hover:text-rose-600 transition-colors">
                                     Tác Giả & Hỗ Trợ
                                 </h3>
                             </div>
@@ -187,19 +190,12 @@ export default function MenuPage() {
                         </div>
 
                         <p className="text-slate-500 text-sm mt-2 line-clamp-2">
-                            Thông tin tác giả, liên hệ và hỗ trợ.
+                            Liên hệ kỹ thuật, báo cáo lỗi và cập nhật phiên bản mới nhất.
                         </p>
 
-                        {/* Các nút con bên trong (chỉ mang tính trang trí visual, click vào vẫn ăn theo khối cha) */}
                         <div className="flex items-center gap-3 mt-4">
-                            <div className="rounded-xl bg-slate-100 text-slate-600 group-hover:bg-black group-hover:text-white transition-all h-10 w-10 flex items-center justify-center">
-                                <GithubOutlined />
-                            </div>
-                            <div className="rounded-xl bg-slate-100 text-slate-600 group-hover:bg-rose-500 group-hover:text-white transition-all h-10 w-10 flex items-center justify-center">
-                                <MailOutlined />
-                            </div>
-
-                            {/* Nút text "Chi tiết" */}
+                            <Tooltip title="Github"><div className="rounded-xl bg-slate-100 text-slate-600 group-hover:bg-black group-hover:text-white transition-all h-10 w-10 flex items-center justify-center"><GithubOutlined /></div></Tooltip>
+                            <Tooltip title="Email"><div className="rounded-xl bg-slate-100 text-slate-600 group-hover:bg-rose-500 group-hover:text-white transition-all h-10 w-10 flex items-center justify-center"><MailOutlined /></div></Tooltip>
                             <div className="ml-auto text-sm font-semibold text-slate-600 group-hover:text-rose-600 flex items-center gap-1 transition-colors">
                                 Xem CV <RightOutlined className="text-xs group-hover:translate-x-1 transition-transform"/>
                             </div>
@@ -224,7 +220,6 @@ export default function MenuPage() {
                                 </div>
                                 <RightOutlined className="text-slate-300 text-xs group-hover:text-slate-600 group-hover:translate-x-1 transition-all" />
                             </div>
-
                             <div>
                                 <h4 className="text-base font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">
                                     {item.title}
@@ -236,13 +231,12 @@ export default function MenuPage() {
                         </motion.div>
                     ))}
                 </div>
-
             </div>
 
-            {/* Modal Creating Test */}
+            {/* MODAL 1: TẠO THỦ CÔNG */}
             <Modal
-                open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
+                open={isManualModalOpen}
+                onCancel={() => setIsManualModalOpen(false)}
                 footer={null}
                 centered
                 width={500}
@@ -252,13 +246,13 @@ export default function MenuPage() {
             >
                 <div className="bg-white rounded-2xl overflow-hidden shadow-2xl p-0">
                     <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <h3 className="font-bold text-slate-800">Thiết Lập Đề Thi</h3>
-                        <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full bg-transparent hover:bg-slate-100 text-slate-400 flex items-center justify-center transition-all">✕</button>
+                        <h3 className="font-bold text-slate-800">Thiết Lập Đề Thi (Thủ Công)</h3>
+                        <button onClick={() => setIsManualModalOpen(false)} className="w-8 h-8 rounded-full bg-transparent hover:bg-slate-100 text-slate-400 flex items-center justify-center transition-all">✕</button>
                     </div>
                     <div className="p-6">
-                        <Form form={form} layout="vertical" onFinish={handleCreateTest}>
+                        <Form form={form} layout="vertical" onFinish={handleCreateManual}>
                             <Form.Item label={<span className="text-slate-600 font-medium text-xs uppercase">Tên bài kiểm tra</span>} name="title" rules={[{ required: true }]}>
-                                <Input size="large" className="rounded-xl border-slate-200 focus:border-indigo-500 hover:border-indigo-300" placeholder="Ví dụ: Kiểm tra 15 phút..." />
+                                <Input size="large" className="rounded-xl border-slate-200" placeholder="Ví dụ: Kiểm tra 15 phút..." />
                             </Form.Item>
                             <div className="grid grid-cols-2 gap-4">
                                 <Form.Item label={<span className="text-slate-600 font-medium text-xs uppercase">Thời gian (phút)</span>} name="duration" rules={[{ required: true }]}>
@@ -271,15 +265,21 @@ export default function MenuPage() {
                                 </Form.Item>
                             </div>
                             <Form.Item label={<span className="text-slate-600 font-medium text-xs uppercase">Ghi chú</span>} name="description">
-                                <Input.TextArea rows={3} className="rounded-xl border-slate-200 focus:border-indigo-500" />
+                                <Input.TextArea rows={3} className="rounded-xl border-slate-200" />
                             </Form.Item>
                             <Button type="primary" htmlType="submit" loading={creating} size="large" className="w-full h-11 rounded-xl bg-slate-900 hover:bg-indigo-600 shadow-lg font-semibold mt-2">
-                                Hoàn Tất & Tạo Mới
+                                Tạo Đề Thi
                             </Button>
                         </Form>
                     </div>
                 </div>
             </Modal>
+
+            {/* MODAL 2: TẠO VỚI AI (Imported Component) */}
+            <AICreateModal
+                open={isAIModalOpen}
+                onCancel={() => setIsAIModalOpen(false)}
+            />
         </div>
     );
 }
