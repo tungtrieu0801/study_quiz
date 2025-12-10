@@ -27,10 +27,10 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import useTestManagement from "../../../app/hooks/useTestManagement.js";
 
-// IMPORT MODAL AI VỪA TẠO
+// IMPORT MODALS
 import AICreateModal from "../component/AICreateModal.jsx";
+import SystemUpdateModal from "../component/SystemUpdateModal.jsx"; // <--- [MỚI] IMPORT VÀO ĐÂY
 
-// CSS Styles
 const styles = `
   .glass-card {
     background: rgba(255, 255, 255, 0.95);
@@ -70,7 +70,7 @@ const styles = `
 export default function MenuPage() {
     const navigate = useNavigate();
 
-    // State quản lý 2 Modal
+    // State quản lý 2 Modal tạo bài thi
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
@@ -128,8 +128,7 @@ export default function MenuPage() {
 
                 {/* --- ROW 1: HERO SECTION (AI & AUTHOR) --- */}
                 <div className="grid grid-cols-12 gap-6 mb-8 h-auto md:h-[200px]">
-
-                    {/* 1. AI MODULE (Span 8/12) */}
+                    {/* AI MODULE */}
                     <motion.div
                         whileHover={{ scale: 1.005 }}
                         whileTap={{ scale: 0.99 }}
@@ -166,7 +165,7 @@ export default function MenuPage() {
                         </div>
                     </motion.div>
 
-                    {/* 2. AUTHOR MODULE (Span 4/12) */}
+                    {/* AUTHOR MODULE */}
                     <motion.div
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -174,7 +173,6 @@ export default function MenuPage() {
                         className="col-span-12 lg:col-span-4 glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between hover-lift relative overflow-hidden group cursor-pointer"
                     >
                         <div className="absolute top-0 right-0 w-32 h-32 bg-slate-100 rounded-bl-[100px] -z-10 transition-colors group-hover:bg-rose-50"></div>
-
                         <div className="flex justify-between items-start">
                             <div>
                                 <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
@@ -188,11 +186,9 @@ export default function MenuPage() {
                                 <CrownFilled className="text-lg"/>
                             </div>
                         </div>
-
                         <p className="text-slate-500 text-sm mt-2 line-clamp-2">
                             Liên hệ kỹ thuật, báo cáo lỗi và cập nhật phiên bản mới nhất.
                         </p>
-
                         <div className="flex items-center gap-3 mt-4">
                             <Tooltip title="Github"><div className="rounded-xl bg-slate-100 text-slate-600 group-hover:bg-black group-hover:text-white transition-all h-10 w-10 flex items-center justify-center"><GithubOutlined /></div></Tooltip>
                             <Tooltip title="Email"><div className="rounded-xl bg-slate-100 text-slate-600 group-hover:bg-rose-500 group-hover:text-white transition-all h-10 w-10 flex items-center justify-center"><MailOutlined /></div></Tooltip>
@@ -232,6 +228,8 @@ export default function MenuPage() {
                     ))}
                 </div>
             </div>
+
+            {/* --- KHU VỰC MODAL --- */}
 
             {/* MODAL 1: TẠO THỦ CÔNG */}
             <Modal
@@ -275,11 +273,15 @@ export default function MenuPage() {
                 </div>
             </Modal>
 
-            {/* MODAL 2: TẠO VỚI AI (Imported Component) */}
+            {/* MODAL 2: TẠO VỚI AI */}
             <AICreateModal
                 open={isAIModalOpen}
                 onCancel={() => setIsAIModalOpen(false)}
             />
+
+            {/* MODAL 3: THÔNG BÁO CẬP NHẬT HỆ THỐNG (MỚI THÊM) */}
+            {/* Component này tự động check API khi render và tự hiện Popup */}
+            <SystemUpdateModal />
         </div>
     );
 }
