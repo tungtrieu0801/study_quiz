@@ -101,7 +101,7 @@ export default function MenuPage() {
 
     const modules = [
         { title: "KHO ĐỀ THI", subtitle: "Lưu trữ & Thống kê", icon: <ExperimentOutlined />, action: "tests", color: "text-blue-600", bg: "bg-blue-50" },
-        { title: "NGÂN HÀNG CÂU HỎI", subtitle: "Soạn thảo gốc", icon: <UnorderedListOutlined />, action: "questions", color: "text-indigo-600", bg: "bg-indigo-50" },
+        { title: "NGÂN HÀNG CÂU HỎI", subtitle: "Thêm câu hỏi tại đây", icon: <UnorderedListOutlined />, action: "questions", color: "text-indigo-600", bg: "bg-indigo-50" },
         { title: "TAGS & CHỦ ĐỀ", subtitle: "Hệ thống phân loại", icon: <TagsOutlined />, action: "tags", color: "text-rose-600", bg: "bg-rose-50" },
         { title: "HỌC VIÊN", subtitle: "Dữ liệu & Kết quả", icon: <TeamOutlined />, action: "students", color: "text-emerald-600", bg: "bg-emerald-50" },
         { title: "TẠO THỦ CÔNG", subtitle: "Soạn đề truyền thống", icon: <PlusCircleOutlined />, action: "add-test", color: "text-amber-600", bg: "bg-amber-50" },
