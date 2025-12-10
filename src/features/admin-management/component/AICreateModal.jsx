@@ -17,12 +17,16 @@ import instance from "../../../shared/lib/axios.config";
 // --- API SERVICE (AI) ---
 const generateQuestionsAPI = async (prompt, count) => {
     try {
-        const response = await fetch('http://localhost:5000/api/ai/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, count }),
+        const response = await instance.post("ai/generate", {
+            prompt,
+            count
         });
-        const data = await response.json();
+        // const response = await fetch('http://localhost:5000/api/ai/generate', {
+        //     method: 'POST',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({ prompt, count }),
+        // });
+        const data = await response.data;
         if (!data.success && !data.data) throw new Error(data.message || "Lỗi AI");
         return data.data;
     } catch (error) {
