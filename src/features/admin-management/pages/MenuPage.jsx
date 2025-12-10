@@ -260,7 +260,7 @@ export default function MenuPage() {
                                 </Form.Item>
                                 <Form.Item label={<span className="text-slate-600 font-medium text-xs uppercase">Khối lớp</span>} name="gradeLevel" rules={[{ required: true }]}>
                                     <Select size="large" className="rounded-xl" placeholder="Chọn khối">
-                                        {[10,11,12].map(g => <Select.Option key={g} value={g.toString()}>Khối {g}</Select.Option>)}
+                                        {[1,2,3,4,5].map(g => <Select.Option key={g} value={g.toString()}>Khối {g}</Select.Option>)}
                                     </Select>
                                 </Form.Item>
                             </div>

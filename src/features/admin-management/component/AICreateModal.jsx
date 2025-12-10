@@ -298,7 +298,7 @@ export default function AICreateModal({ open, onCancel }) {
                                             <Input.TextArea
                                                 rows={6}
                                                 className="rounded-2xl border-slate-200 bg-white text-base p-4 shadow-sm focus:border-indigo-600 focus:shadow-indigo-100 transition-all"
-                                                placeholder="Ví dụ: Tạo 10 câu hỏi Toán lớp 12 về Khảo sát hàm số, mức độ Vận dụng cao..."
+                                                placeholder="Ví dụ: Tạo đề thi toán học cho lớp 1 với mức độ Vận dụng cao..."
                                                 value={prompt}
                                                 onChange={(e) => setPrompt(e.target.value)}
                                             />
@@ -465,10 +465,10 @@ export default function AICreateModal({ open, onCancel }) {
                                                         label="Khối lớp"
                                                         name="gradeLevel"
                                                         rules={[{ required: true, message: 'Chọn khối' }]}
-                                                        initialValue="12"
+                                                        initialValue="1"
                                                     >
                                                         <Select className="rounded-xl">
-                                                            {[10, 11, 12].map(g => (
+                                                            {[1, 2, 3, 4, 5].map(g => (
                                                                 <Select.Option key={g} value={g.toString()}>Khối {g}</Select.Option>
                                                             ))}
                                                         </Select>
