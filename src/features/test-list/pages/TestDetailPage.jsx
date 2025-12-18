@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import instance from "../../../shared/lib/axios.config";
-import { message, Button, Tag, Skeleton, Empty, Spin, Result, Modal, Image } from "antd"; // Đã thêm Image
+import { message, Button, Tag, Spin, Result, Modal, Image, Input, Checkbox, Radio, Alert } from "antd";
 import {
     ClockCircleOutlined,
     CheckCircleOutlined,
@@ -12,12 +12,16 @@ import {
     EyeOutlined,
     ArrowLeftOutlined,
     ExclamationCircleOutlined,
-    WarningOutlined
+    WarningOutlined,
+    CheckSquareOutlined,
+    BorderOutlined
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import useAuth from "../../../app/hooks/useAuth.js";
 
-// Component con: Màn hình Tổng kết điểm
+const { TextArea } = Input;
+
+// --- COMPONENT CON: TỔNG KẾT ĐIỂM ---
 const SummaryCard = ({ result, onReview, onBack, testTitle }) => (
     <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -39,23 +43,10 @@ const SummaryCard = ({ result, onReview, onBack, testTitle }) => (
                         <Tag color="default" className="px-3 py-1 text-base">Tổng: {result.total}</Tag>
                     </div>
                 </div>,
-                <Button
-                    key="review"
-                    type="primary"
-                    size="large"
-                    icon={<EyeOutlined />}
-                    className="w-full mb-3 bg-blue-600 h-12 rounded-xl"
-                    onClick={onReview}
-                >
+                <Button key="review" type="primary" size="large" icon={<EyeOutlined />} className="w-full mb-3 bg-blue-600 h-12 rounded-xl" onClick={onReview}>
                     Xem chi tiết đáp án
                 </Button>,
-                <Button
-                    key="back"
-                    size="large"
-                    icon={<ArrowLeftOutlined />}
-                    className="w-full h-12 rounded-xl"
-                    onClick={onBack}
-                >
+                <Button key="back" size="large" icon={<ArrowLeftOutlined />} className="w-full h-12 rounded-xl" onClick={onBack}>
                     Quay về trang chủ
                 </Button>
             ]}
@@ -74,18 +65,13 @@ export default function TestDetailPage() {
     const [loading, setLoading] = useState(true);
 
     // Test State
-    const [selectedAnswers, setSelectedAnswers] = useState({});
+    const [selectedAnswers, setSelectedAnswers] = useState({}); // Stores answer for each question ID
     const [submitResult, setSubmitResult] = useState(null);
     const [timeLeft, setTimeLeft] = useState(null);
 
     // UI State
-    const [viewMode, setViewMode] = useState('doing');
-
-    // State Modal
-    const [modalConfig, setModalConfig] = useState({
-        visible: false,
-        type: 'confirm'
-    });
+    const [viewMode, setViewMode] = useState('doing'); // 'doing', 'summary', 'review'
+    const [modalConfig, setModalConfig] = useState({ visible: false, type: 'confirm' });
 
     const hasWarnedRef = useRef(false);
     const questionRefs = useRef({});
@@ -119,9 +105,7 @@ export default function TestDetailPage() {
                     if (info && info.duration) {
                         const numberPart = String(info.duration).replace(/[^0-9]/g, '');
                         const minutes = parseInt(numberPart);
-                        if (!isNaN(minutes) && minutes > 0) {
-                            durationInSeconds = minutes * 60;
-                        }
+                        if (!isNaN(minutes) && minutes > 0) durationInSeconds = minutes * 60;
                     }
                     setTimeLeft(durationInSeconds);
                 }
@@ -132,14 +116,12 @@ export default function TestDetailPage() {
                 setLoading(false);
             }
         };
-
         if (isInitialized) fetchData();
     }, [testId, isInitialized]);
 
     // 3. Countdown Timer
     useEffect(() => {
         if (viewMode !== 'doing' || timeLeft === null) return;
-
         const interval = setInterval(() => {
             setTimeLeft((prev) => {
                 if (prev <= 1) {
@@ -174,18 +156,57 @@ export default function TestDetailPage() {
         }
     };
 
-    const handleSelect = (qId, value) => {
+    // --- LOGIC XỬ LÝ INPUT (QUAN TRỌNG) ---
+    const handleAnswerChange = (qId, value, type) => {
         if (viewMode !== 'doing') return;
-        setSelectedAnswers(prev => ({ ...prev, [qId]: value }));
+
+        setSelectedAnswers(prev => {
+            const current = prev[qId];
+
+            if (type === 'MULTIPLE_SELECT') {
+                // Logic chọn nhiều: Nếu có rồi thì bỏ, chưa có thì thêm
+                let newArr = Array.isArray(current) ? [...current] : [];
+                if (newArr.includes(value)) {
+                    newArr = newArr.filter(item => item !== value);
+                } else {
+                    newArr.push(value);
+                }
+                return { ...prev, [qId]: newArr };
+            }
+
+            if (type === 'FILL_IN_THE_BLANK') {
+                // value ở đây là { index: 0, text: "abc" }
+                let newArr = Array.isArray(current) ? [...current] : [];
+                newArr[value.index] = value.text;
+                return { ...prev, [qId]: newArr };
+            }
+
+            // Các loại khác (Single, TrueFalse, ShortAnswer) -> Lưu đè
+            return { ...prev, [qId]: value };
+        });
     };
 
     // --- LOGIC NỘP BÀI ---
-
     const handleManualSubmit = () => {
-        const unansweredCount = questions.length - Object.keys(selectedAnswers).length;
+        // Tính số câu chưa làm (check null, undefined, mảng rỗng, string rỗng)
+        const unansweredCount = questions.filter(q => {
+            const ans = selectedAnswers[q._id];
+            if (ans === undefined || ans === null) return true;
+            if (Array.isArray(ans) && ans.length === 0) return true;
+            if (typeof ans === 'string' && ans.trim() === '') return true;
+            // Với fill in blank, check xem có ô nào trống không
+            if (q.type === 'FILL_IN_THE_BLANK' && Array.isArray(ans)) {
+                // Đếm số chỗ trống trong câu hỏi
+                const blanksCount = q.content.split('___').length - 1;
+                // Nếu mảng answer chưa đủ độ dài hoặc có phần tử rỗng
+                if(ans.length < blanksCount) return true;
+                for(let i=0; i<blanksCount; i++) if(!ans[i] || ans[i].trim() === '') return true;
+            }
+            return false;
+        }).length;
 
         if (unansweredCount > 0) {
-            setModalConfig({ visible: true, type: 'block' });
+            setModalConfig({ visible: true, type: 'block', count: unansweredCount });
         } else {
             setModalConfig({ visible: true, type: 'confirm' });
         }
@@ -193,45 +214,25 @@ export default function TestDetailPage() {
 
     const handleModalOk = () => {
         setModalConfig(prev => ({ ...prev, visible: false }));
-        if (modalConfig.type === 'confirm') {
-            processSubmit();
-        }
+        if (modalConfig.type === 'confirm') processSubmit();
     };
 
     const handleAutoSubmit = () => {
         Modal.warning({
-            title: 'Hết thời gian làm bài!',
-            content: 'Hệ thống sẽ tự động thu bài của bạn ngay bây giờ.',
-            okText: 'Xem kết quả',
-            centered: true,
-            keyboard: false,
-            maskClosable: false,
-            onOk: () => { }
+            title: 'Hết thời gian!',
+            content: 'Hệ thống sẽ tự động thu bài.',
+            onOk: () => processSubmit()
         });
-        processSubmit();
     };
 
     const processSubmit = async () => {
         try {
-            // --- BƯỚC 1: CHUẨN BỊ DỮ LIỆU ĐẦY ĐỦ ---
-            // Tạo một object chứa đáp án của TẤT CẢ câu hỏi
-            // Nếu user chưa chọn, mặc định gán là null
             const fullAnswers = {};
             questions.forEach(q => {
-                // Kiểm tra xem câu hỏi này đã có trong danh sách chọn chưa
-                if (selectedAnswers[q._id]) {
-                    fullAnswers[q._id] = selectedAnswers[q._id];
-                } else {
-                    fullAnswers[q._id] = null; // Gửi null nếu chưa làm
-                }
+                fullAnswers[q._id] = selectedAnswers[q._id] || null;
             });
 
-            // --- BƯỚC 2: GỬI REQUEST ---
-            const res = await instance.post("/questions/submit", {
-                testId: testId,
-                answers: fullAnswers // Gửi fullAnswers thay vì selectedAnswers
-            });
-
+            const res = await instance.post("/questions/submit", { testId, answers: fullAnswers });
             if (res.data.success) {
                 setSubmitResult(res.data.data);
                 setViewMode('summary');
@@ -239,14 +240,257 @@ export default function TestDetailPage() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } catch (err) {
-            console.error(err);
-            const errorMessage = err.response?.data?.message || "Lỗi khi nộp bài. Vui lòng thử lại!";
-            message.error(errorMessage);
+            message.error(err.response?.data?.message || "Lỗi nộp bài.");
         }
     };
 
-    // --- RENDER ---
+    // --- RENDERERS CHO TỪNG LOẠI CÂU HỎI ---
 
+    // 1. Single Choice
+    const renderSingleChoice = (q, userAnswer, resultData, isReviewing) => {
+        return (
+            <div className="grid gap-3 ml-0 md:ml-0">
+                {q.options.map((opt) => {
+                    const isSelected = userAnswer === opt;
+                    let containerClass = "border-slate-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
+                    let iconRender = null;
+
+                    if (!isReviewing) {
+                        if (isSelected) containerClass = "border-blue-600 bg-blue-50 ring-1 ring-blue-600 shadow-sm";
+                    } else {
+                        if (resultData) {
+                            const isCorrectAns = opt === resultData.correctAnswer;
+                            if (isCorrectAns) {
+                                containerClass = "border-green-500 bg-green-50 ring-1 ring-green-500";
+                                iconRender = <CheckCircleOutlined className="text-green-600 text-xl ml-auto" />;
+                            } else if (isSelected && !resultData.isCorrect) {
+                                containerClass = "border-red-400 bg-red-50 ring-1 ring-red-400 opacity-80";
+                                iconRender = <CloseCircleOutlined className="text-red-500 text-xl ml-auto" />;
+                            } else {
+                                containerClass = "border-slate-100 opacity-50";
+                            }
+                        } else {
+                            containerClass = "border-slate-100 opacity-50";
+                        }
+                    }
+
+                    return (
+                        <div key={opt} onClick={() => handleAnswerChange(q._id, opt, 'SINGLE_CHOICE')}
+                             className={`flex items-center gap-3 p-3 md:p-4 rounded-xl border-2 transition-all duration-200 ${containerClass}`}>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-600' : 'border-slate-300'}`}>
+                                {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
+                            </div>
+                            <span className={`text-sm md:text-base font-medium ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>{opt}</span>
+                            {iconRender}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    // 2. Multiple Select
+    const renderMultipleSelect = (q, userAnswer, resultData, isReviewing) => {
+        const currentSelected = Array.isArray(userAnswer) ? userAnswer : [];
+
+        return (
+            <div className="grid gap-3">
+                <div className="text-sm text-slate-500 italic mb-1">* Chọn tất cả các đáp án đúng</div>
+                {q.options.map((opt) => {
+                    const isSelected = currentSelected.includes(opt);
+                    let containerClass = "border-slate-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
+                    let iconRender = null;
+
+                    if (!isReviewing) {
+                        if (isSelected) containerClass = "border-blue-600 bg-blue-50 ring-1 ring-blue-600 shadow-sm";
+                    } else {
+                        // Logic Review Multiple
+                        if (resultData) {
+                            // Backend trả về resultData.correctAnswer là mảng các đáp án đúng
+                            const correctArr = Array.isArray(resultData.correctAnswer) ? resultData.correctAnswer : [];
+                            const isCorrectOpt = correctArr.includes(opt);
+
+                            if (isCorrectOpt) {
+                                if (isSelected) {
+                                    // Chọn đúng
+                                    containerClass = "border-green-500 bg-green-50 ring-1 ring-green-500";
+                                    iconRender = <CheckCircleOutlined className="text-green-600 text-xl ml-auto" />;
+                                } else {
+                                    // Đúng nhưng không chọn -> Nhắc nhở
+                                    containerClass = "border-green-500 border-dashed bg-white opacity-70";
+                                    iconRender = <span className="ml-auto text-green-600 text-xs font-bold">(Đáp án đúng)</span>;
+                                }
+                            } else if (isSelected && !isCorrectOpt) {
+                                // Chọn sai
+                                containerClass = "border-red-400 bg-red-50 ring-1 ring-red-400";
+                                iconRender = <CloseCircleOutlined className="text-red-500 text-xl ml-auto" />;
+                            } else {
+                                containerClass = "border-slate-100 opacity-40";
+                            }
+                        }
+                    }
+
+                    return (
+                        <div key={opt} onClick={() => handleAnswerChange(q._id, opt, 'MULTIPLE_SELECT')}
+                             className={`flex items-center gap-3 p-3 md:p-4 rounded-xl border-2 transition-all duration-200 ${containerClass}`}>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white'}`}>
+                                {isSelected && <CheckSquareOutlined className="text-white text-xs" />}
+                            </div>
+                            <span className={`text-sm md:text-base font-medium ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>{opt}</span>
+                            {iconRender}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    // 3. True / False
+    const renderTrueFalse = (q, userAnswer, resultData, isReviewing) => {
+        // userAnswer có thể là boolean (true/false) hoặc string "true"/"false" hoặc null
+        // convert về string để so sánh
+        const currentVal = String(userAnswer);
+
+        const options = [
+            { label: "Đúng (True)", val: "true", color: "text-green-700" },
+            { label: "Sai (False)", val: "false", color: "text-red-700" }
+        ];
+
+        return (
+            <div className="flex gap-4">
+                {options.map((opt) => {
+                    const isSelected = currentVal === opt.val;
+                    let btnClass = "bg-white border-slate-200 text-slate-500 hover:border-blue-400";
+
+                    if (!isReviewing) {
+                        if (isSelected) btnClass = "bg-blue-50 border-blue-600 text-blue-700 ring-1 ring-blue-600 font-bold shadow-md";
+                    } else if (resultData) {
+                        const correctVal = String(resultData.correctAnswer);
+                        if (opt.val === correctVal) {
+                            btnClass = "bg-green-100 border-green-500 text-green-800 ring-1 ring-green-500 font-bold";
+                        } else if (isSelected && opt.val !== correctVal) {
+                            btnClass = "bg-red-50 border-red-400 text-red-800 ring-1 ring-red-400 opacity-80";
+                        } else {
+                            btnClass = "bg-slate-50 border-slate-100 opacity-40";
+                        }
+                    }
+
+                    return (
+                        <button
+                            key={opt.val}
+                            onClick={() => handleAnswerChange(q._id, opt.val, 'TRUE_FALSE')}
+                            className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all text-lg ${btnClass}`}
+                        >
+                            {opt.label}
+                        </button>
+                    )
+                })}
+            </div>
+        );
+    };
+
+    // 4. Fill in the Blank
+    const renderFillInTheBlank = (q, userAnswer, resultData, isReviewing) => {
+        // Split content by '___'
+        const parts = q.content.split('___');
+        const userAnswers = Array.isArray(userAnswer) ? userAnswer : [];
+
+        // Nếu đang review, backend trả về mảng đáp án đúng
+        const correctAnswers = resultData && Array.isArray(resultData.correctAnswer) ? resultData.correctAnswer : [];
+
+        return (
+            <div className="leading-10 text-lg text-slate-800">
+                {parts.map((part, index) => (
+                    <React.Fragment key={index}>
+                        <span>{part}</span>
+                        {index < parts.length - 1 && (
+                            <span className="inline-block mx-1">
+                                {isReviewing ? (
+                                    // REVIEW MODE
+                                    <span className="flex flex-col items-center leading-normal align-middle">
+                                        <span className={`px-2 py-1 rounded font-bold border-b-2 
+                                            ${userAnswers[index] === correctAnswers[index]
+                                            ? 'bg-green-100 text-green-700 border-green-500'
+                                            : 'bg-red-50 text-red-700 border-red-500 line-through decoration-red-500'}`}>
+                                            {userAnswers[index] || "(Trống)"}
+                                        </span>
+                                        {userAnswers[index] !== correctAnswers[index] && (
+                                            <span className="text-xs text-green-600 font-bold mt-1 bg-green-50 px-1 rounded">
+                                                {correctAnswers[index]}
+                                            </span>
+                                        )}
+                                    </span>
+                                ) : (
+                                    // DOING MODE
+                                    <Input
+                                        style={{ width: '150px', textAlign: 'center' }}
+                                        placeholder={`(${index + 1})`}
+                                        value={userAnswers[index] || ""}
+                                        onChange={(e) => handleAnswerChange(q._id, { index: index, text: e.target.value }, 'FILL_IN_THE_BLANK')}
+                                        className="font-medium text-blue-800 border-blue-300 focus:border-blue-600 focus:shadow-md"
+                                    />
+                                )}
+                            </span>
+                        )}
+                    </React.Fragment>
+                ))}
+            </div>
+        );
+    };
+
+    // 5. Short Answer
+    const renderShortAnswer = (q, userAnswer, resultData, isReviewing) => {
+        return (
+            <div className="w-full">
+                {isReviewing ? (
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                        <div className="mb-2">
+                            <span className="text-slate-500 text-sm">Câu trả lời của bạn:</span>
+                            <div className={`mt-1 font-medium text-lg ${resultData?.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                                {userAnswer || "(Bỏ trống)"}
+                            </div>
+                        </div>
+                        {!resultData?.isCorrect && (
+                            <div className="mt-3 pt-3 border-t border-slate-200">
+                                <span className="text-slate-500 text-sm">Đáp án tham khảo:</span>
+                                <div className="mt-1 font-medium text-lg text-green-700">
+                                    {Array.isArray(resultData?.correctAnswer) ? resultData.correctAnswer.join(" / ") : resultData?.correctAnswer}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <TextArea
+                        rows={3}
+                        placeholder="Nhập câu trả lời của bạn tại đây..."
+                        value={userAnswer || ""}
+                        onChange={(e) => handleAnswerChange(q._id, e.target.value, 'SHORT_ANSWER')}
+                        className="rounded-xl border-slate-300 text-base focus:border-blue-500 focus:shadow-sm"
+                    />
+                )}
+            </div>
+        );
+    };
+
+    // --- MAIN RENDER QUESTION ITEM ---
+    const renderQuestionInput = (q, userAnswer, resultData, isReviewing) => {
+        // Tùy theo Type mà gọi hàm render tương ứng
+        switch (q.type) {
+            case 'MULTIPLE_SELECT':
+                return renderMultipleSelect(q, userAnswer, resultData, isReviewing);
+            case 'TRUE_FALSE':
+                return renderTrueFalse(q, userAnswer, resultData, isReviewing);
+            case 'FILL_IN_THE_BLANK':
+                return renderFillInTheBlank(q, userAnswer, resultData, isReviewing);
+            case 'SHORT_ANSWER':
+                return renderShortAnswer(q, userAnswer, resultData, isReviewing);
+            case 'SINGLE_CHOICE':
+            default:
+                return renderSingleChoice(q, userAnswer, resultData, isReviewing);
+        }
+    };
+
+    // --- RENDER MAIN UI ---
     if (!isInitialized || loading || timeLeft === null) return <div className="h-screen flex items-center justify-center"><Spin size="large" /></div>;
 
     if (viewMode === 'summary') {
@@ -257,26 +501,24 @@ export default function TestDetailPage() {
     const { m, sec } = formatTime(timeLeft);
     const isUrgent = timeLeft < 120 && viewMode === 'doing';
     const finalQuestions = questions.length === 0;
-    const unansweredCount = questions.length - Object.keys(selectedAnswers).length;
 
+    // Palette: Nút bấm chuyển câu nhanh
     const QuestionPalette = ({ isMobile = false }) => (
         <div className={`${isMobile ? 'flex gap-2 overflow-x-auto pb-2 custom-scrollbar' : 'grid grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar'}`}>
             {questions.map((q, index) => {
-                const isSelected = !!selectedAnswers[q._id];
-                let btnClass = isSelected ? "bg-blue-600 text-white border-blue-600 shadow-md" : "bg-white text-slate-500 hover:bg-slate-100 border-slate-200";
+                // Check đã làm chưa
+                const ans = selectedAnswers[q._id];
+                let hasAnswered = false;
+                if (Array.isArray(ans)) hasAnswered = ans.length > 0;
+                else hasAnswered = ans !== undefined && ans !== null && ans !== "";
+
+                let btnClass = hasAnswered ? "bg-blue-600 text-white border-blue-600 shadow-md" : "bg-white text-slate-500 hover:bg-slate-100 border-slate-200";
 
                 if (submitResult) {
-                    // SỬA: Thêm ?. hoặc fallback về mảng rỗng [] để tránh lỗi undefined
-                    const details = submitResult.details || [];
-                    const detail = details.find(d => d.questionId === q._id);
-
+                    const detail = submitResult.details?.find(d => d.questionId === q._id);
                     if (detail) {
-                        // Đã làm -> Check đúng sai dựa trên kết quả trả về
-                        btnClass = detail.isCorrect
-                            ? "bg-green-500 text-white border-green-500"
-                            : "bg-red-500 text-white border-red-500";
+                        btnClass = detail.isCorrect ? "bg-green-500 text-white border-green-500" : "bg-red-500 text-white border-red-500";
                     } else {
-                        // Chưa làm (không tìm thấy trong details) -> Tính là Sai (Màu đỏ)
                         btnClass = "bg-red-500 text-white border-red-500";
                     }
                 }
@@ -288,7 +530,7 @@ export default function TestDetailPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans pb-20">
-            {/* Sticky Header */}
+            {/* Header */}
             <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-md border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-4 py-3">
                     <div className="flex flex-col gap-3">
@@ -297,11 +539,9 @@ export default function TestDetailPage() {
                                 <h2 className="text-base font-bold text-slate-700 md:text-lg line-clamp-1">{isReviewing ? "Xem lại bài thi" : testInfo?.title || "Kiểm tra Online"}</h2>
                                 {!isReviewing && <span className="text-xs text-slate-400 hidden md:block">Thời gian: {testInfo?.duration}</span>}
                             </div>
-
                             <div className={`flex items-center gap-2 text-xl font-mono font-bold ${isUrgent ? 'text-red-600 animate-pulse' : 'text-slate-700'}`}>
                                 <ClockCircleOutlined /> {m}:{sec}
                             </div>
-
                             <div className="flex items-center gap-3">
                                 {isReviewing && (<Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/')} size="middle" className="font-semibold">Thoát</Button>)}
                                 {!isReviewing && (<Button type="primary" onClick={handleManualSubmit} icon={<SendOutlined />} className="bg-blue-600 shadow-lg font-semibold">Nộp bài</Button>)}
@@ -313,6 +553,7 @@ export default function TestDetailPage() {
             </div>
 
             <div className="max-w-7xl mx-auto p-4 md:p-8 flex gap-8">
+                {/* Sidebar Desktop */}
                 <div className="hidden lg:block w-[300px] shrink-0">
                     <div className="sticky top-32 space-y-6">
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
@@ -322,15 +563,14 @@ export default function TestDetailPage() {
                     </div>
                 </div>
 
+                {/* Main Content */}
                 <div className="flex-1 min-w-0">
                     {finalQuestions ? (
-                        <Empty description="Đề thi chưa có câu hỏi nào" className="mt-10" />
+                        <div className="text-center mt-20 text-slate-400">Đề thi chưa có câu hỏi nào.</div>
                     ) : (
                         <div className="space-y-6 md:space-y-8">
                             {questions.map((q, idx) => {
                                 const userAnswer = selectedAnswers[q._id];
-
-                                // --- FIX LOGIC 2: Check an toàn khi lấy kết quả ---
                                 let resultData = null;
                                 if (submitResult && submitResult.details) {
                                     resultData = submitResult.details.find(d => d.questionId === q._id);
@@ -343,91 +583,61 @@ export default function TestDetailPage() {
                                         className={`
                                             p-5 md:p-8 rounded-2xl bg-white shadow-sm border transition-all scroll-mt-48
                                             ${isReviewing
-                                            // Nếu có resultData và đúng -> Xanh. Ngược lại (sai hoặc chưa làm) -> Đỏ
-                                            ? (resultData?.isCorrect ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30')
+                                            ? (resultData?.isCorrect ? 'border-green-200 bg-green-50/20' : 'border-red-200 bg-red-50/20')
                                             : 'border-slate-200 hover:shadow-md'
                                         }
                                         `}
                                     >
                                         <div className="flex gap-4 mb-4">
-                                            <span className={`flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-lg transition-colors ${isReviewing ? (resultData?.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700') : 'bg-blue-100 text-blue-600'}`}>{idx + 1}</span>
+                                            <span className={`flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-lg transition-colors ${isReviewing ? (resultData?.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700') : 'bg-blue-100 text-blue-600'}`}>
+                                                {idx + 1}
+                                            </span>
 
-                                            {/* Container chứa Text và Image */}
                                             <div className="pt-1 w-full">
-                                                <h3 className="text-base md:text-lg font-semibold text-slate-800 leading-relaxed mb-3">
-                                                    {q.content}
-                                                </h3>
+                                                {/* Nếu là Fill Blank thì content render trong input luôn, ko render ở đây để tránh trùng lặp, trừ khi muốn hiện đề bài gốc */}
+                                                {q.type !== 'FILL_IN_THE_BLANK' && (
+                                                    <h3 className="text-base md:text-lg font-semibold text-slate-800 leading-relaxed mb-3">
+                                                        {q.content}
+                                                    </h3>
+                                                )}
 
-                                                {/* --- HIỂN THỊ ẢNH CÂU HỎI (Mới thêm) --- */}
+                                                {q.type === 'FILL_IN_THE_BLANK' && (
+                                                    <div className="mb-3">
+                                                        <span className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 block">Điền từ vào chỗ trống:</span>
+                                                        {/* Render Fill blank content inside Input area */}
+                                                    </div>
+                                                )}
+
                                                 {q.imageUrl && (
                                                     <div className="w-full my-4 flex justify-center">
                                                         <Image
                                                             src={q.imageUrl}
-                                                            alt={`Question ${idx + 1} image`}
                                                             className="rounded-lg border border-slate-100 object-contain"
                                                             style={{ maxHeight: "350px", maxWidth: "100%" }}
-                                                            placeholder={
-                                                                <div className="flex items-center justify-center h-40 bg-slate-100 text-slate-400 rounded-lg">
-                                                                    <Spin />
-                                                                </div>
-                                                            }
                                                         />
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="grid gap-3 ml-0 md:ml-14">
-                                            <div className="text-start text-sm md:text-base font-medium text-slate-600 mb-1">
-                                                Chọn đáp án dưới đây
-                                            </div>
-                                            {q.options.map((opt) => {
-                                                const isSelected = userAnswer === opt;
-                                                let containerClass = "border-slate-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
-                                                let iconRender = null;
 
-                                                if (!isReviewing) {
-                                                    if (isSelected) containerClass = "border-blue-600 bg-blue-50 ring-1 ring-blue-600";
-                                                }
-                                                else {
-                                                    // --- FIX LOGIC 3: Xử lý hiển thị đáp án khi chưa làm ---
-                                                    if (resultData) {
-                                                        // Trường hợp ĐÃ LÀM
-                                                        const isCorrectAns = opt === resultData.correctAnswer;
-                                                        if (isCorrectAns) { containerClass = "border-green-500 bg-green-100 ring-1 ring-green-500"; iconRender = <CheckCircleOutlined className="text-green-600 text-xl ml-auto" />; }
-                                                        else if (isSelected && !resultData.isCorrect) { containerClass = "border-red-400 bg-red-50 ring-1 ring-red-400 opacity-80"; iconRender = <CloseCircleOutlined className="text-red-500 text-xl ml-auto" />; }
-                                                        else { containerClass = "border-slate-100 opacity-50"; }
-                                                    } else {
-                                                        // Trường hợp CHƯA LÀM (resultData undefined)
-                                                        containerClass = "border-slate-100 opacity-50";
-                                                    }
-                                                }
-
-                                                return (<div key={opt} onClick={() => handleSelect(q._id, opt)} className={`relative flex items-center gap-3 p-3 md:p-4 rounded-xl border-2 transition-all duration-200 ${containerClass}`}>
-                                                    {!isReviewing && (<div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-600' : 'border-slate-300'}`}>{isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}</div>)}
-                                                    <span className={`text-sm md:text-base font-medium ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>{opt}</span>
-                                                    {iconRender}
-                                                </div>);
-                                            })}
+                                        {/* Khu vực render input */}
+                                        <div className="ml-0 md:ml-14">
+                                            {renderQuestionInput(q, userAnswer, resultData, isReviewing)}
                                         </div>
 
-                                        {/* Hiển thị lời giải */}
+                                        {/* Lời giải chi tiết (Review Mode) */}
                                         {isReviewing && (
                                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-6 ml-0 md:ml-14 p-4 bg-amber-50 rounded-xl border border-amber-200 text-slate-700 text-sm md:text-base">
                                                 <div className="font-bold text-amber-800 mb-2 flex items-center gap-2">
-                                                    {/* Nếu chưa làm -> Hiện icon Warning */}
                                                     {!resultData ? <WarningOutlined className="text-red-500"/> : <FlagOutlined />}
-                                                    {resultData ? "Giải thích chi tiết:" : <span className="text-red-600">Bạn chưa chọn đáp án cho câu hỏi này!</span>}
+                                                    {resultData ? "Giải thích chi tiết:" : <span className="text-red-600">Bạn chưa làm câu này!</span>}
                                                 </div>
-
                                                 <div className="leading-relaxed">
-                                                    {resultData?.solution
-                                                        ? resultData.solution
-                                                        : (
-                                                            resultData
-                                                                ? <span className="italic text-slate-500">Không có lời giải chi tiết. Đáp án đúng: <strong>{resultData.correctAnswer}</strong></span>
-                                                                : <span className="italic text-slate-400">Hệ thống không hiển thị đáp án cho câu hỏi chưa làm.</span>
-                                                        )
-                                                    }
+                                                    {resultData?.solution || (
+                                                        resultData
+                                                            ? <span className="italic text-slate-500">Không có lời giải chi tiết.</span>
+                                                            : <span className="italic text-slate-400">Hệ thống không hiển thị đáp án cho câu hỏi chưa làm.</span>
+                                                    )}
                                                 </div>
                                             </motion.div>
                                         )}
@@ -439,7 +649,7 @@ export default function TestDetailPage() {
                 </div>
             </div>
 
-            {/* --- MODAL XỬ LÝ NỘP BÀI --- */}
+            {/* Modal Confirm Submit */}
             <Modal
                 title={<div className="flex items-center gap-2 text-lg font-bold text-slate-800">{modalConfig.type === 'block' ? <WarningOutlined className="text-red-500 text-xl"/> : <ExclamationCircleOutlined className="text-orange-500 text-xl"/>}{modalConfig.type === 'block' ? "Chưa hoàn thành bài thi" : "Xác nhận nộp bài"}</div>}
                 open={modalConfig.visible}
@@ -453,7 +663,7 @@ export default function TestDetailPage() {
             >
                 <div className="py-4 text-base">
                     {modalConfig.type === 'block' ? (
-                        <div><p className="mb-2">Bạn vẫn còn <strong className="text-red-600 text-lg">{unansweredCount}</strong> câu hỏi chưa chọn đáp án.</p><p className="text-slate-500 text-sm">Vui lòng hoàn thành tất cả các câu hỏi trước khi nộp bài.</p></div>
+                        <div><p className="mb-2">Bạn vẫn còn <strong className="text-red-600 text-lg">{modalConfig.count}</strong> câu hỏi chưa hoàn thành.</p><p className="text-slate-500 text-sm">Vui lòng kiểm tra lại các câu hỏi (đặc biệt là câu điền từ/chọn nhiều).</p></div>
                     ) : (
                         <p>Bạn đã hoàn thành tất cả câu hỏi. Bạn có chắc chắn muốn nộp bài và kết thúc phiên làm việc này không?</p>
                     )}
