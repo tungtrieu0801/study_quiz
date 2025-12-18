@@ -1,222 +1,282 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, Checkbox, Button, Row, Col, Upload, message } from "antd";
-import { PlusOutlined, UploadOutlined, FileImageOutlined } from "@ant-design/icons";
+import { Modal, Form, Input, Checkbox, Button, Row, Col, Upload, Radio, Select, message, Alert } from "antd";
+import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import questionApi from "../api/questionApi.js";
 import { toast } from "react-toastify";
 
-const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tests, refreshTags }) => {
+const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, questionType, tags, refreshTags }) => {
     const [form] = Form.useForm();
     const [newTagName, setNewTagName] = useState("");
     const [creatingTag, setCreatingTag] = useState(false);
-
-    // State quản lý file ảnh
     const [fileList, setFileList] = useState([]);
-    const [previewImage, setPreviewImage] = useState(null);
 
-    // Reset form hoặc điền dữ liệu khi mở modal
+    // Title động
+    const getTitle = () => {
+        const labels = {
+            'SINGLE_CHOICE': 'Trắc nghiệm 1 đáp án',
+            'MULTIPLE_SELECT': 'Trắc nghiệm nhiều đáp án',
+            'TRUE_FALSE': 'Đúng / Sai',
+            'SHORT_ANSWER': 'Trả lời ngắn',
+            'FILL_IN_THE_BLANK': 'Điền từ vào chỗ trống'
+        };
+        const typeLabel = labels[questionType] || questionType;
+        return initialValues ? `Cập nhật: ${typeLabel}` : `Tạo mới: ${typeLabel}`;
+    };
+
+    // --- Reset & Load Data ---
     useEffect(() => {
         if (open) {
-            setFileList([]); // Reset ảnh khi mở lại
-            setPreviewImage(null);
-
+            setFileList([]);
             if (initialValues) {
+                // Xử lý logic parse dữ liệu cũ
+                let parsedAnswer = initialValues.answer;
+
+                // True/False cần convert về Boolean
+                if (initialValues.type === 'TRUE_FALSE') {
+                    parsedAnswer = String(initialValues.answer).toLowerCase() === 'true';
+                }
+
                 form.setFieldsValue({
                     ...initialValues,
+                    type: initialValues.type,
                     tags: initialValues.tags || [],
-                    testIds: initialValues.testIds || [],
-                    options: initialValues.options || ["", "", "", ""]
+                    options: initialValues.options || ["", "", "", ""],
+                    answer: parsedAnswer
                 });
-                // Nếu có ảnh cũ (URL) thì hiển thị (nếu API trả về field image)
-                if (initialValues.image) {
-                    setPreviewImage(initialValues.image);
-                }
             } else {
                 form.resetFields();
+                form.setFieldsValue({
+                    type: questionType,
+                    options: ["", "", "", ""],
+                    // Fill in blank cần mảng rỗng ban đầu để hiện 1 dòng input
+                    answer: questionType === 'FILL_IN_THE_BLANK' ? [""] : undefined
+                });
             }
             setNewTagName("");
         }
-    }, [open, initialValues, form]);
+    }, [open, initialValues, questionType, form]);
 
-    // --- Xử lý dán ảnh (Ctrl + V) ---
+    // --- Paste Ảnh ---
     useEffect(() => {
-        const handlePaste = (event) => {
+        const handlePaste = (e) => {
             if (!open) return;
-            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (let index in items) {
                 const item = items[index];
                 if (item.kind === 'file' && item.type.includes('image/')) {
                     const blob = item.getAsFile();
-                    const fileObj = {
-                        uid: '-1',
-                        name: 'pasted_image.png',
-                        status: 'done',
-                        originFileObj: blob,
-                    };
-                    setFileList([fileObj]);
-                    message.success("Đã dán ảnh từ Clipboard!");
+                    setFileList([{ uid: '-1', name: 'pasted.png', status: 'done', originFileObj: blob }]);
+                    message.success("Đã dán ảnh!");
                 }
             }
         };
-
-        // Lắng nghe sự kiện paste trên toàn bộ cửa sổ khi modal mở
         window.addEventListener('paste', handlePaste);
-        return () => {
-            window.removeEventListener('paste', handlePaste);
-        };
+        return () => window.removeEventListener('paste', handlePaste);
     }, [open]);
 
-    // --- API tạo Tag nhanh ---
     const handleCreateNewTag = async (tagName) => {
         if (!tagName.trim()) return;
+        setCreatingTag(true);
         try {
-            setCreatingTag(true);
-            const res = await questionApi.createTag({
-                name: tagName,
-                description: "Tự động tạo khi thêm câu hỏi"
-            });
-            if (res.data.success) {
-                toast.success("Tạo thành công nhóm câu hỏi mới");
-                setNewTagName("");
-                await refreshTags();
-                return res.data.data._id;
-            }
-        } catch (error) {
-            toast.error("Lỗi khi tạo nhóm câu hỏi");
-            throw error;
-        } finally {
-            setCreatingTag(false);
-        }
-    }
+            await questionApi.createTag({ name: tagName, description: "Quick add" });
+            toast.success("Đã thêm tag");
+            setNewTagName("");
+            await refreshTags();
+        } catch (e) { toast.error("Lỗi tạo tag"); }
+        finally { setCreatingTag(false); }
+    };
 
-    // --- Xử lý Submit ---
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
-            let finalTags = values.tags || [];
-
-            // Logic: Nếu user nhập tag mới mà quên bấm nút "Thêm" thì tự tạo luôn
-            if (newTagName.trim()) {
-                try {
-                    const newTagId = await handleCreateNewTag(newTagName);
-                    if (newTagId) finalTags = [...finalTags, newTagId];
-                } catch (e) {
-                    return; // Dừng nếu lỗi
-                }
-            }
-
-            // Chuẩn bị dữ liệu trả về cho Parent Component
-            // Kèm theo file ảnh (nếu có)
             const submitData = {
                 ...values,
-                tags: finalTags,
+                tags: values.tags || [],
+                type: initialValues ? initialValues.type : questionType,
                 imageFile: fileList.length > 0 ? fileList[0].originFileObj : null
             };
-
             onSuccess(submitData);
-        } catch (error) {
-            // Validate failed
-        }
+        } catch (error) { console.error("Validate failed:", error); }
     };
 
-    // Props cho Upload component
     const uploadProps = {
-        onRemove: () => {
-            setFileList([]);
-            setPreviewImage(null);
-        },
+        onRemove: () => setFileList([]),
         beforeUpload: (file) => {
-            // Chặn auto upload, chỉ lưu vào state để submit sau
             setFileList([{ uid: file.uid, name: file.name, status: 'done', originFileObj: file }]);
             return false;
         },
-        fileList,
-        maxCount: 1,
-        accept: "image/*"
+        fileList, maxCount: 1, accept: "image/*"
+    };
+
+    // --- RENDER DYNAMIC FIELDS ---
+    const renderSpecificFields = () => {
+        const currentType = initialValues ? initialValues.type : questionType;
+
+        switch (currentType) {
+            case 'SINGLE_CHOICE':
+                return (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                        <p className="font-semibold text-slate-700 mb-2">Lựa chọn & Đáp án đúng</p>
+                        {["A", "B", "C", "D"].map((opt, idx) => (
+                            <Row gutter={8} key={opt} className="mb-2">
+                                <Col flex="30px" className="flex items-center justify-center font-bold text-blue-600">{opt}.</Col>
+                                <Col flex="auto">
+                                    <Form.Item name={["options", idx]} rules={[{ required: true }]} noStyle>
+                                        <Input placeholder={`Lựa chọn ${opt}`} />
+                                    </Form.Item>
+                                </Col>
+                                <Col flex="40px" className="flex items-center justify-center">
+                                    <Form.Item shouldUpdate noStyle>
+                                        {({ getFieldValue, setFieldsValue }) => (
+                                            <Radio
+                                                checked={getFieldValue('answer') === getFieldValue(['options', idx]) && !!getFieldValue(['options', idx])}
+                                                onChange={() => setFieldsValue({ answer: getFieldValue(['options', idx]) })}
+                                            />
+                                        )}
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        ))}
+                        <Form.Item name="answer" rules={[{ required: true, message: "Chọn đáp án đúng" }]}>
+                            <Input placeholder="Nội dung đáp án đúng (tự động điền khi chọn radio)" readOnly />
+                        </Form.Item>
+                    </div>
+                );
+
+            case 'MULTIPLE_SELECT':
+                return (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                        <p className="font-semibold text-slate-700 mb-2">Nhập lựa chọn & Chọn các đáp án đúng</p>
+                        {["A", "B", "C", "D"].map((opt, idx) => (
+                            <Row gutter={8} key={opt} className="mb-2">
+                                <Col flex="30px" className="font-bold text-blue-600 pt-1">{opt}.</Col>
+                                <Col flex="auto">
+                                    <Form.Item name={["options", idx]} rules={[{ required: true }]} noStyle>
+                                        <Input placeholder={`Lựa chọn ${opt}`} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        ))}
+
+                        <div className="mt-4">
+                            <Form.Item shouldUpdate={(prev, curr) => prev.options !== curr.options} noStyle>
+                                {({ getFieldValue }) => {
+                                    const options = getFieldValue('options') || [];
+                                    return (
+                                        <Form.Item
+                                            name="answer"
+                                            label="Các đáp án đúng"
+                                            rules={[{ required: true, type: 'array', min: 1, message: 'Chọn ít nhất 1 đáp án' }]}
+                                        >
+                                            <Select mode="multiple" placeholder="Chọn các đáp án đúng..." allowClear>
+                                                {options.map((opt, idx) => (
+                                                    opt ? <Select.Option key={idx} value={opt}>{String.fromCharCode(65+idx)}. {opt}</Select.Option> : null
+                                                ))}
+                                            </Select>
+                                        </Form.Item>
+                                    );
+                                }}
+                            </Form.Item>
+                        </div>
+                    </div>
+                );
+
+            case 'TRUE_FALSE':
+                return (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                        <Form.Item label="Mệnh đề này là Đúng hay Sai?" name="answer" rules={[{ required: true }]}>
+                            <Radio.Group buttonStyle="solid" className="w-full text-center">
+                                <Radio.Button value={true} className="w-1/2 h-10 leading-9 font-bold text-green-700">Đúng (True)</Radio.Button>
+                                <Radio.Button value={false} className="w-1/2 h-10 leading-9 font-bold text-red-700">Sai (False)</Radio.Button>
+                            </Radio.Group>
+                        </Form.Item>
+                        <Form.Item name="options" hidden initialValue={["True", "False"]}><Input /></Form.Item>
+                    </div>
+                );
+
+            case 'FILL_IN_THE_BLANK':
+                return (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                        <Alert message={<span>Dùng ký tự <b>___</b> (3 dấu gạch dưới) để tạo chỗ trống trong câu hỏi.</span>} type="info" showIcon className="mb-3" />
+                        <p className="font-semibold mb-2">Danh sách từ điền vào chỗ trống (theo thứ tự):</p>
+
+                        <Form.List name="answer">
+                            {(fields, { add, remove }) => (
+                                <>
+                                    {fields.map((field, index) => (
+                                        <div key={field.key} className="flex gap-2 mb-2 items-center">
+                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">{index + 1}</div>
+                                            <Form.Item
+                                                {...field}
+                                                rules={[{ required: true, message: "Nhập từ cần điền" }]}
+                                                noStyle
+                                            >
+                                                <Input placeholder={`Từ cần điền vị trí ${index + 1}`} />
+                                            </Form.Item>
+                                            {fields.length > 1 && <Button danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />}
+                                        </div>
+                                    ))}
+                                    <Form.Item>
+                                        <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>Thêm chỗ trống</Button>
+                                    </Form.Item>
+                                </>
+                            )}
+                        </Form.List>
+                        <Form.Item name="options" hidden initialValue={[]}><Input /></Form.Item>
+                    </div>
+                );
+
+            case 'SHORT_ANSWER':
+                return (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                        <Form.Item label="Đáp án mẫu (Text)" name="answer" rules={[{ required: true }]}>
+                            <Input.TextArea rows={2} placeholder="Nhập câu trả lời chính xác..." />
+                        </Form.Item>
+                        <Form.Item name="options" hidden initialValue={[]}><Input /></Form.Item>
+                    </div>
+                );
+            default: return null;
+        }
     };
 
     return (
         <Modal
-            title={initialValues ? "Cập nhật câu hỏi" : "Tạo câu hỏi mới"}
+            title={getTitle()}
             open={open}
             onCancel={onCancel}
             onOk={handleOk}
-            okText={initialValues ? "Lưu thay đổi" : "Tạo mới"}
+            okText="Lưu câu hỏi"
             width={800}
             centered
             maskClosable={false}
         >
             <Form form={form} layout="vertical" className="pt-2">
+                <Form.Item name="type" hidden><Input /></Form.Item>
+
                 <Row gutter={16}>
                     <Col span={16}>
-                        <Form.Item label="Nội dung câu hỏi" name="content" rules={[{ required: true, message: "Nhập câu hỏi" }]}>
-                            <Input.TextArea rows={3} placeholder="Nhập nội dung câu hỏi..." className="rounded-lg" />
+                        <Form.Item label="Nội dung câu hỏi" name="content" rules={[{ required: true }]}>
+                            <Input.TextArea rows={3} placeholder="Nhập nội dung câu hỏi..." />
                         </Form.Item>
-
-                        {/* --- Khu vực Upload Ảnh --- */}
-                        <Form.Item label="Hình ảnh minh họa (Chọn file hoặc Ctrl+V để dán)">
+                        <Form.Item label="Hình ảnh minh họa">
                             <Upload {...uploadProps} listType="picture-card">
-                                {fileList.length < 1 && (
-                                    <div>
-                                        <PlusOutlined />
-                                        <div style={{ marginTop: 8 }}>Upload</div>
-                                    </div>
-                                )}
+                                {fileList.length < 1 && <div><PlusOutlined /><div style={{ marginTop: 8 }}>Upload</div></div>}
                             </Upload>
-                            {/* Hiển thị ảnh cũ nếu đang edit và chưa chọn ảnh mới */}
-                            {initialValues && initialValues.image && fileList.length === 0 && (
-                                <div className="mt-2 text-gray-500 text-xs flex items-center gap-2">
-                                    <FileImageOutlined /> Ảnh hiện tại:
-                                    <a href={initialValues.image} target="_blank" rel="noreferrer" className="text-blue-600">Xem ảnh cũ</a>
-                                </div>
-                            )}
                         </Form.Item>
                     </Col>
-
                     <Col span={8}>
                         <Form.Item label="Khối lớp" name="gradeLevel" rules={[{ required: true }]}>
-                            <Input placeholder="VD: 1, 2, 3..." className="rounded-lg"/>
+                            <Input placeholder="VD: 10, 11, 12" />
                         </Form.Item>
-                        {/* Vị trí Select Multiple Test (đã comment trong code cũ) */}
-                    </Col>
-                </Row>
-
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
-                    <Form.Item label="Các lựa chọn đáp án" style={{marginBottom: 8}} required>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {["A", "B", "C", "D"].map((opt, idx) => (
-                                <Form.Item key={opt} name={["options", idx]} rules={[{ required: true, message: "Nhập đáp án" }]} noStyle>
-                                    <Input prefix={<span className="font-bold text-blue-600 mr-2 w-4">{opt}.</span>} placeholder={`Lựa chọn ${opt}`} className="rounded-md" />
-                                </Form.Item>
-                            ))}
-                        </div>
-                    </Form.Item>
-                </div>
-
-                <Row gutter={16}>
-                    <Col span={12}>
-                        <Form.Item label="Đáp án đúng" name="answer" rules={[{ required: true }]}>
-                            <Input placeholder="Nhập chính xác nội dung đáp án đúng" />
-                        </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                        <Form.Item label="Thuộc nhóm câu hỏi nào">
+                        <Form.Item label="Tag / Chủ đề">
                             <div className="flex gap-2 mb-2">
-                                <Input
-                                    placeholder="Tên tag mới..."
-                                    value={newTagName}
-                                    onChange={(e) => setNewTagName(e.target.value)}
-                                    onPressEnter={(e) => { e.preventDefault(); handleCreateNewTag(newTagName); }}
-                                />
-                                <Button onClick={() => handleCreateNewTag(newTagName)} loading={creatingTag} icon={<PlusOutlined />}>Thêm</Button>
+                                <Input value={newTagName} onChange={(e) => setNewTagName(e.target.value)} placeholder="Tag mới..." />
+                                <Button onClick={() => handleCreateNewTag(newTagName)} loading={creatingTag} icon={<PlusOutlined />} />
                             </div>
-                            <div className="border border-slate-200 rounded-lg p-3 max-h-32 overflow-y-auto bg-white">
+                            <div className="border border-slate-200 rounded-lg p-2 max-h-32 overflow-y-auto">
                                 <Form.Item name="tags" noStyle>
-                                    <Checkbox.Group className="w-full">
-                                        <div className="flex flex-wrap gap-2">
-                                            {(tags || []).map((t) => (
-                                                <Checkbox key={t._id} value={t._id} className="select-none text-xs">{t.name}</Checkbox>
-                                            ))}
-                                        </div>
+                                    <Checkbox.Group className="flex flex-col">
+                                        {(tags || []).map((t) => <Checkbox key={t._id} value={t._id}>{t.name}</Checkbox>)}
                                     </Checkbox.Group>
                                 </Form.Item>
                             </div>
@@ -224,8 +284,10 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, tags, tes
                     </Col>
                 </Row>
 
-                <Form.Item label="Giải thích chi tiết" name="solution" rules={[{ required: true }]}>
-                    <Input.TextArea rows={2} placeholder="Tại sao lại chọn đáp án này..." className="rounded-lg"/>
+                {renderSpecificFields()}
+
+                <Form.Item label="Giải thích chi tiết" name="solution">
+                    <Input.TextArea rows={2} placeholder="Giải thích đáp án..." />
                 </Form.Item>
             </Form>
         </Modal>

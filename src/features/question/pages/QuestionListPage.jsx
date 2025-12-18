@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Button, Card, message, Input } from "antd";
 import { PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import instance from "../../../shared/lib/axios.config"; // Đảm bảo đường dẫn đúng
+import { toast } from "react-toastify";
+import instance from "../../../shared/lib/axios.config";
 
 // Import components
 import QuestionTable from "../components/QuestionTable";
 import QuestionFormModal from "../components/QuestionFormModal";
 import QuestionDetailDrawer from "../components/QuestionDetailDrawer";
 import questionApi from "../api/questionApi.js";
-import {toast} from "react-toastify";
-import useAuth from "../../../app/hooks/useAuth.js";
+import QuestionTypeModal from "../components/add-question-module/QuestionTypeModal.jsx";
 
 export default function QuestionListPage() {
     // --- Data State ---
@@ -26,12 +26,16 @@ export default function QuestionListPage() {
     });
 
     // --- UI State ---
-    const [modalOpen, setModalOpen] = useState(false);
+    const [modalOpen, setModalOpen] = useState(false); // Form Modal
+    const [typeModalOpen, setTypeModalOpen] = useState(false); // Type Select Modal
     const [editingQuestion, setEditingQuestion] = useState(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [viewingQuestion, setViewingQuestion] = useState(null);
 
-    // --- 1. Fetch Metadata (Tags, Tests) ---
+    // State lưu loại câu hỏi đang thao tác
+    const [selectedType, setSelectedType] = useState('SINGLE_CHOICE');
+
+    // --- 1. Fetch Data ---
     useEffect(() => {
         const fetchMetadata = async () => {
             try {
@@ -39,12 +43,8 @@ export default function QuestionListPage() {
                     questionApi.getTags(),
                     questionApi.getTests()
                 ]);
-
-                // Xử lý Tags
                 const tagData = tRes.data.data;
                 setTags(Array.isArray(tagData) ? tagData : (tagData?.tagList || []));
-
-                // Xử lý Tests
                 setTests(Array.isArray(testRes.data.data) ? testRes.data.data : []);
             } catch (err) {
                 console.error("Lỗi tải metadata:", err);
@@ -55,7 +55,6 @@ export default function QuestionListPage() {
         fetchQuestions(1, 10);
     }, []);
 
-    // --- 2. Fetch Questions ---
     const fetchQuestions = async (page = 1, pageSize = 10) => {
         setLoading(true);
         try {
@@ -85,12 +84,17 @@ export default function QuestionListPage() {
     };
 
     // --- Handlers ---
-    const handleCreate = () => {
+    const handleCreateClick = () => setTypeModalOpen(true);
+
+    const handleTypeSelect = (type) => {
+        setSelectedType(type);
+        setTypeModalOpen(false);
         setEditingQuestion(null);
         setModalOpen(true);
     };
 
     const handleEdit = (question) => {
+        setSelectedType(question.type || 'SINGLE_CHOICE');
         setEditingQuestion(question);
         setModalOpen(true);
     };
@@ -114,51 +118,69 @@ export default function QuestionListPage() {
         fetchQuestions(newPagination.current, newPagination.pageSize);
     };
 
-    // --- LOGIC GỬI FORM VỚI FILE UPLOAD ---
+    // --- LOGIC GỬI FORM (Xử lý Mảng & FormData) ---
     const handleFormSuccess = async (values) => {
         try {
-            // Tạo FormData để hỗ trợ upload file
             const formData = new FormData();
+            const typeToSend = values.type || selectedType || "SINGLE_CHOICE";
 
-            // Append các trường text cơ bản
+            // 1. Các trường cơ bản
             formData.append('content', values.content);
             formData.append('gradeLevel', values.gradeLevel);
-            formData.append('answer', values.answer);
-            formData.append('solution', values.solution);
-            formData.append('type', values.type || "SINGLE_CHOICE");
+            formData.append('solution', values.solution || "");
+            formData.append('type', typeToSend);
 
-            // Append mảng Options (Lưu ý: tùy backend, thường gửi lặp key hoặc stringify)
-            // Cách 1: Gửi lặp key (thường dùng cho multer)
+            // 2. Xử lý ANSWER (Quan trọng)
+            if (['MULTIPLE_SELECT', 'FILL_IN_THE_BLANK'].includes(typeToSend)) {
+                // Backend yêu cầu Array -> Phải append nhiều lần
+                const answerArr = Array.isArray(values.answer) ? values.answer : [values.answer];
+                // Lọc bỏ giá trị rỗng hoặc null
+                const cleanAnswers = answerArr.filter(a => a !== null && a !== undefined && a !== "");
+
+                cleanAnswers.forEach(ans => formData.append('answer', ans));
+
+                // Backup nếu mảng rỗng (tránh lỗi backend đòi mảng không rỗng)
+                if (cleanAnswers.length === 0) formData.append('answer', " ");
+            }
+            else if (typeToSend === 'TRUE_FALSE') {
+                // Backend cần string "true"/"false"
+                formData.append('answer', String(values.answer));
+            }
+            else {
+                // Single Choice, Short Answer...
+                formData.append('answer', values.answer);
+            }
+
+            // 3. Xử lý OPTIONS
             if (values.options && Array.isArray(values.options)) {
                 values.options.forEach(opt => formData.append('options', opt));
             }
 
-            // Append mảng Tags
+            // 4. Xử lý TAGS
             if (values.tags && Array.isArray(values.tags)) {
                 values.tags.forEach(tagId => formData.append('tags', tagId));
             }
 
-            // Append File ảnh (quan trọng: key "file" phải khớp với upload.single("file") ở server)
+            // 5. Xử lý FILE
             if (values.imageFile) {
                 formData.append('file', values.imageFile);
             }
 
-            // Gọi API
+            // --- GỌI API ---
             if (editingQuestion) {
-                // UPDATE: Lưu ý api update cũng phải hỗ trợ formData nếu muốn sửa ảnh
                 await questionApi.update(editingQuestion._id, formData);
-                toast.success("Cập nhật câu hỏi thành công");
+                toast.success("Cập nhật thành công");
             } else {
-                // CREATE
                 await questionApi.create(formData);
-                toast.success("Tạo câu hỏi thành công");
+                toast.success("Tạo mới thành công");
             }
 
             setModalOpen(false);
             fetchQuestions(pagination.current, pagination.pageSize);
         } catch (err) {
             console.error(err);
-            message.error("Có lỗi xảy ra: " + (err.response?.data?.message || err.message));
+            const msg = err.response?.data?.message || err.message;
+            toast.error(`Lỗi: ${msg}`);
         }
     };
 
@@ -166,7 +188,6 @@ export default function QuestionListPage() {
         <div className="p-6 bg-slate-50 min-h-screen">
             <div className="max-w-7xl mx-auto">
                 <Card className="shadow-sm border border-slate-200 rounded-xl" bordered={false}>
-                    {/* Toolbar */}
                     <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
                         <div>
                             <h2 className="text-2xl font-bold text-slate-800">Ngân hàng câu hỏi</h2>
@@ -174,13 +195,18 @@ export default function QuestionListPage() {
                         </div>
                         <div className="flex items-center gap-3">
                             <Input prefix={<SearchOutlined className="text-slate-400"/>} placeholder="Tìm kiếm..." className="w-48 rounded-lg" />
-                            <Button type="primary" size="large" icon={<PlusOutlined />} onClick={handleCreate} className="bg-blue-600 rounded-lg shadow-md">
+                            <Button
+                                type="primary"
+                                size="large"
+                                icon={<PlusOutlined />}
+                                onClick={handleCreateClick}
+                                className="bg-blue-600 rounded-lg shadow-md"
+                            >
                                 Thêm câu hỏi
                             </Button>
                         </div>
                     </div>
 
-                    {/* Table */}
                     <QuestionTable
                         questions={questions}
                         loading={loading}
@@ -194,11 +220,18 @@ export default function QuestionListPage() {
                 </Card>
             </div>
 
+            <QuestionTypeModal
+                open={typeModalOpen}
+                onCancel={() => setTypeModalOpen(false)}
+                onSelect={handleTypeSelect}
+            />
+
             <QuestionFormModal
                 open={modalOpen}
                 onCancel={() => setModalOpen(false)}
                 onSuccess={handleFormSuccess}
                 initialValues={editingQuestion}
+                questionType={selectedType}
                 tags={tags}
                 tests={tests}
                 refreshTags={fetchTags}
