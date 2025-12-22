@@ -117,29 +117,52 @@ const QuestionFormModal = ({ open, onCancel, onSuccess, initialValues, questionT
                 return (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
                         <p className="font-semibold text-slate-700 mb-2">Lựa chọn & Đáp án đúng</p>
+
+                        {/* Vòng lặp hiển thị 4 ô nhập lựa chọn */}
                         {["A", "B", "C", "D"].map((opt, idx) => (
                             <Row gutter={8} key={opt} className="mb-2">
-                                <Col flex="30px" className="flex items-center justify-center font-bold text-blue-600">{opt}.</Col>
-                                <Col flex="auto">
-                                    <Form.Item name={["options", idx]} rules={[{ required: true }]} noStyle>
-                                        <Input placeholder={`Lựa chọn ${opt}`} />
-                                    </Form.Item>
+                                <Col flex="30px" className="flex items-center justify-center font-bold text-blue-600">
+                                    {opt}.
                                 </Col>
-                                <Col flex="40px" className="flex items-center justify-center">
-                                    <Form.Item shouldUpdate noStyle>
-                                        {({ getFieldValue, setFieldsValue }) => (
-                                            <Radio
-                                                checked={getFieldValue('answer') === getFieldValue(['options', idx]) && !!getFieldValue(['options', idx])}
-                                                onChange={() => setFieldsValue({ answer: getFieldValue(['options', idx]) })}
-                                            />
-                                        )}
+                                <Col flex="auto">
+                                    {/* Lưu ý: name ở đây là mảng ['options', idx] để Antd quản lý dưới dạng Array */}
+                                    <Form.Item
+                                        name={["options", idx]}
+                                        rules={[{ required: true, message: "Vui lòng nhập nội dung lựa chọn" }]}
+                                        noStyle
+                                    >
+                                        <Input placeholder={`Nhập nội dung lựa chọn ${opt}`} />
                                     </Form.Item>
                                 </Col>
                             </Row>
                         ))}
-                        <Form.Item name="answer" rules={[{ required: true, message: "Chọn đáp án đúng" }]}>
-                            <Input placeholder="Nội dung đáp án đúng (tự động điền khi chọn radio)" readOnly />
-                        </Form.Item>
+
+                        <div className="mt-4 border-t border-slate-200 pt-3">
+                            <p className="font-semibold text-slate-700 mb-2">Đáp án đúng</p>
+
+                            {/* Ô nhập đáp án đúng có Validate */}
+                            <Form.Item
+                                name="answer"
+                                dependencies={['options']}
+                                rules={[
+                                    { required: true, message: "Vui lòng nhập đáp án đúng" },
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            const options = getFieldValue('options') || [];
+
+                                            if (!value || options.includes(value)) {
+                                                return Promise.resolve();
+                                            }
+
+                                            // Nếu không khớp
+                                            return Promise.reject(new Error('Nội dung đáp án phải trùng khớp chính xác với 1 trong 4 lựa chọn trên!'));
+                                        },
+                                    }),
+                                ]}
+                            >
+                                <Input placeholder="Nhập hoặc dán nội dung đáp án đúng vào đây..." />
+                            </Form.Item>
+                        </div>
                     </div>
                 );
 

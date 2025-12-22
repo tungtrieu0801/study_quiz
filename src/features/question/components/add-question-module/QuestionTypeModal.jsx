@@ -16,7 +16,7 @@ const QUESTION_TYPES = [
     { type: 'MULTIPLE_SELECT', label: 'Trắc nghiệm nhiều đáp án', icon: <OrderedListOutlined />, desc: 'Chọn nhiều đáp án đúng' },
     { type: 'TRUE_FALSE', label: 'Đúng / Sai', icon: <CheckSquareOutlined />, desc: 'Xác định mệnh đề là Đúng hay Sai' },
     { type: 'SHORT_ANSWER', label: 'Trả lời ngắn', icon: <EditOutlined />, desc: 'Học sinh nhập câu trả lời chính xác' },
-    { type: 'FILL_IN_THE_BLANK', label: 'Điền vào chỗ trống', icon: <DashOutlined />, desc: 'Điền từ còn thiếu vào đoạn văn' },
+    // { type: 'FILL_IN_THE_BLANK', label: 'Điền vào chỗ trống', icon: <DashOutlined />, desc: 'Điền từ còn thiếu vào đoạn văn' },
 ];
 
 const QuestionTypeModal = ({ open, onCancel, onSelect }) => {

@@ -10,8 +10,9 @@ import StudentListPages from "../../features/student-management/pages/StudentLis
 import TagListPage from "../../features/tags/pages/TagListPage.jsx";
 import QuestionListPage from "../../features/question/pages/QuestionListPage.jsx";
 import TestManagementPage from "../../features/test-list/pages/admin/TestManagementPage.jsx";
-import TestDetailPage from "../../features/test-list/pages/TestDetailPage.jsx";
+// import TestDetailPage from "../../features/test-list/pages/TestDetailPage.jsx";
 import AuthorAndSupportPage from "../../features/admin-management/pages/AuthorAndSupportPage.jsx";
+import TestDetailPage from "../../features/test-list/pages/test-detail/TestDetailPage.jsx";
 
 // PrivateRoute
 const PrivateRoute = ({ element }) => {
