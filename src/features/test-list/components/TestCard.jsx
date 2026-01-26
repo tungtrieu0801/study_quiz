@@ -4,17 +4,16 @@ import {
     CheckCircleOutlined,
     ReadOutlined,
     SettingOutlined,
-    ClockCircleOutlined,
+    CalendarOutlined, // Đổi icon Clock thành Calendar cho ngày tạo
     TrophyOutlined,
     ArrowRightOutlined,
     EyeOutlined,
-    EyeInvisibleOutlined
+    EyeInvisibleOutlined,
+    FireOutlined // Icon cho hiệu ứng pháo hoa/nổi bật
 } from "@ant-design/icons";
 
-// Thêm prop onEdit vào đây
 const TestCard = ({ test, isTeacher, onClick, onActivate, isActivating, onEdit }) => {
 
-    // Logic: Đề được coi là Active nếu status = 'activate' HOẶC không có trường status (đề cũ)
     const isLive = test.status === 'activate' || !test.status;
 
     const getGradeColor = (grade) => {
@@ -22,6 +21,13 @@ const TestCard = ({ test, isTeacher, onClick, onActivate, isActivating, onEdit }
         if (grade.toString().includes("12")) return "purple";
         if (grade.toString().includes("10")) return "cyan";
         return "blue";
+    };
+
+    // Hàm format ngày tháng
+    const formatDate = (dateString) => {
+        if (!dateString) return "Mới cập nhật";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('vi-VN'); // Hiển thị dạng dd/mm/yyyy
     };
 
     return (
@@ -33,7 +39,7 @@ const TestCard = ({ test, isTeacher, onClick, onActivate, isActivating, onEdit }
             onClick={onClick}
             styles={{ body: { padding: "24px", height: "100%", display: "flex", flexDirection: "column" } }}
         >
-            {/* Ribbon trạng thái đã làm (cho học sinh) */}
+            {/* Ribbon trạng thái đã làm */}
             {test.isTaken && !isTeacher && (
                 <div className="absolute top-0 right-0 bg-slate-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl z-10 flex items-center gap-1">
                     <CheckCircleOutlined /> ĐÃ LÀM
@@ -46,28 +52,37 @@ const TestCard = ({ test, isTeacher, onClick, onActivate, isActivating, onEdit }
                 ${isTeacher ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} 
             `} />
 
-            {/* Header */}
+            {/* Header Area */}
             <div className="flex justify-between items-start mb-4">
-                <Tag color={getGradeColor(test.gradeLevel)} className="px-3 py-1 rounded-full border-none bg-slate-100 m-0 font-medium">
+                {/* Left: Grade Tag */}
+                <Tag color={getGradeColor(test.gradeLevel)} className="px-3 py-1 rounded-full border-none bg-slate-100 m-0 font-medium h-fit">
                     <ReadOutlined /> {test.gradeLevel ? `Khối ${test.gradeLevel}` : "Đại trà"}
                 </Tag>
 
-                {/* --- NÚT SỬA (EDIT BUTTON) --- */}
-                {isTeacher && (
-                    <div
-                        className="text-slate-400 bg-slate-50 hover:bg-slate-100 hover:text-blue-600 cursor-pointer p-1.5 rounded-md transition-all"
-                        onClick={(e) => {
-                            e.stopPropagation(); // Chặn click lan ra Card cha
-                            onEdit(test); // Gọi hàm sửa
-                        }}
-                    >
-                        <SettingOutlined />
-                    </div>
-                )}
+                {/* Right: Edit Button & Fireworks Duration */}
+                <div className="flex flex-col items-end gap-2 z-20">
+                    {/* --- NÚT SỬA (EDIT BUTTON) + TEXT --- */}
+                    {isTeacher && (
+                        <div
+                            className="text-slate-500 bg-slate-50 border border-slate-100 hover:bg-white hover:border-blue-200 hover:text-blue-600 hover:shadow-sm cursor-pointer px-2 py-1 rounded-lg transition-all flex items-center gap-1.5"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(test);
+                            }}
+                        >
+                            <SettingOutlined />
+                            <span className="text-xs font-semibold">Chỉnh sửa</span>
+                        </div>
+                    )}
+                </div>
             </div>
-
+            {/* --- HIỆU ỨNG PHÁO HOA (THỜI GIAN LÀM BÀI) --- */}
+            {/* Nằm ngay bên dưới nút cài đặt */}
+            <div className="h-10 bg-gradient-to-r from-fuchsia-500 via-red-500 to-orange-400 text-white text-sm font-bold px-2 py-1 rounded-2xl shadow-md flex items-center gap-1 animate-pulse mb-6">
+                <FireOutlined /> {'Thời gian làm bài: ' + test.duration || 15} phút
+            </div>
             {/* Content */}
-            <h3 className="text-xl font-bold text-slate-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+            <h3 className="text-2xl font-bold text-slate-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors mt-[-10px]">
                 {test.title || "Không có tên"}
             </h3>
             <div className="flex-grow">
@@ -81,22 +96,25 @@ const TestCard = ({ test, isTeacher, onClick, onActivate, isActivating, onEdit }
 
             {/* Footer */}
             <div className="flex items-center justify-between text-slate-400 text-sm">
-                {/* Left Side: Duration */}
-                <div className="flex items-center gap-1.5">
-                    <ClockCircleOutlined className={isLive ? "text-blue-500" : "text-orange-400"} />
-                    <span className="font-medium text-slate-600">{test.duration || "--"}</span>
+
+                {/* --- Left Side: NGÀY TẠO ĐỀ (Thay cho số phút cũ) --- */}
+                <div className="flex items-center gap-1.5" title="Ngày tạo đề">
+                    <CalendarOutlined className="text-slate-400" />
+                    <span className="font-medium text-slate-500">
+                        {formatDate(test.createdAt || test.created_at)}
+                    </span>
                 </div>
 
                 {/* Right Side: Action Button */}
                 {isTeacher ? (
-                    // --- GIAO DIỆN CHO TEACHER (TOGGLE) ---
+                    // --- GIAO DIỆN CHO TEACHER ---
                     <div
                         className="flex items-center gap-3"
-                        onClick={(e) => e.stopPropagation()} // Chặn click lan ra Card
+                        onClick={(e) => e.stopPropagation()}
                     >
                         <span className={`text-xs font-semibold flex items-center gap-1 ${isLive ? 'text-green-600' : 'text-orange-500'}`}>
                             {isLive ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-                            {isLive ? "Đã kích hoạt" : "Đang ẩn với học sinh"}
+                            {isLive ? "Đã kích hoạt" : "Đang ẩn"}
                         </span>
 
                         {isLive ? (
@@ -111,7 +129,7 @@ const TestCard = ({ test, isTeacher, onClick, onActivate, isActivating, onEdit }
                         ) : (
                             <Popconfirm
                                 title="Bật hiển thị đề thi?"
-                                description="Sau khi bật, học sinh sẽ nhìn thấy đề này ngay lập tức."
+                                description="Học sinh sẽ nhìn thấy đề này ngay lập tức."
                                 onConfirm={() => onActivate(test._id)}
                                 okText="Bật ngay"
                                 cancelText="Hủy"
