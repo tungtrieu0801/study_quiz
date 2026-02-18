@@ -45,6 +45,16 @@ const RenderTrueFalse = ({q, userAnswer, resultData, isReviewing, onChange}) => 
 
     return (
         <div className="flex gap-3 mt-3 max-w-md">
+            {/* Image */}
+            {q.imageUrl && (
+                <div className="mb-4">
+                    <Image
+                        src={q.imageUrl}
+                        height={300}
+                        className="rounded-lg"
+                    />
+                </div>
+            )}
             {/* max-w-md để giới hạn chiều rộng, không cho nó giãn hết màn hình */}
             {options.map((opt) => {
                 const isSelected = currentVal === opt.val;
@@ -112,6 +122,16 @@ const RenderFillInBlank = ({q, userAnswer, resultData, isReviewing, onChange}) =
     return (
         <div className="bg-white p-5 md:p-8 rounded-2xl border border-slate-100 shadow-sm">
             <div className="text-lg md:text-xl leading-[2.5] text-slate-700 font-medium">
+                {/* Image */}
+                {q.imageUrl && (
+                    <div className="mb-4">
+                        <Image
+                            src={q.imageUrl}
+                            height={300}
+                            className="rounded-lg"
+                        />
+                    </div>
+                )}
                 {parts.map((part, index) => (
                     <React.Fragment key={index}>
                         {/* Phần text tĩnh */}
@@ -180,6 +200,16 @@ const RenderFillInBlank = ({q, userAnswer, resultData, isReviewing, onChange}) =
 const RenderSingleChoice = ({q, userAnswer, resultData, isReviewing, onChange}) => (
     <div className="grid gap-3 ml-0 md:ml-0">
         <div className="text-lg text-red-400 italic mb-1 font-bold">* Chọn đáp án đúng duy nhất</div>
+        {/* Image */}
+        {q.imageUrl && (
+            <div className="mb-4">
+                <Image
+                    src={q.imageUrl}
+                    height={300}
+                    className="rounded-lg"
+                />
+            </div>
+        )}
         {q.options.map((opt) => {
             const isSelected = userAnswer === opt;
             let containerClass = "border-slate-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
@@ -218,6 +248,16 @@ const RenderMultipleSelect = ({q, userAnswer, resultData, isReviewing, onChange}
     return (
         <div className="grid gap-3">
             <div className="text-lg text-red-400 italic mb-1 font-bold">* Chọn tất cả các đáp án đúng</div>
+            {/* Image */}
+            {q.imageUrl && (
+                <div className="mb-4">
+                    <Image
+                        src={q.imageUrl}
+                        height={300}
+                        className="rounded-lg"
+                    />
+                </div>
+            )}
             {q.options.map((opt) => {
                 const isSelected = currentSelected.includes(opt);
                 let containerClass = "border-slate-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
@@ -261,6 +301,16 @@ const RenderMultipleSelect = ({q, userAnswer, resultData, isReviewing, onChange}
 
 const RenderShortAnswer = ({q, userAnswer, resultData, isReviewing, onChange}) => (
     <div className="w-full">
+        {/* Image */}
+        {q.imageUrl && (
+            <div className="mb-4">
+                <Image
+                    src={q.imageUrl}
+                    height={300}
+                    className="rounded-lg"
+                />
+            </div>
+        )}
         {isReviewing ? (
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
                 <div className="mb-2">
